@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Tech4Good 교통약자 맞춤 이동 API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     React/Vite 프론트엔드, FastAPI 백엔드와 Python 개인화 경로 엔진이 공유하는 MVP 계약입니다.
     모든 예시 데이터는 합성 데이터이며 실제 운행정보가 아닙니다.
@@ -656,6 +656,10 @@ components:
     DataConfidence:
       type: string
       enum: [VERIFIED, ESTIMATED, UNKNOWN]
+    DataSource:
+      type: string
+      description: 접근성 정보의 실제 출처. 합성 데이터는 반드시 SYNTHETIC_FIXTURE로 표시합니다.
+      enum: [TMAP, SEOUL_OPEN_DATA, SYNTHETIC_FIXTURE, TEAM_ENGINE, UNKNOWN]
     TimeSource:
       type: string
       enum: [REALTIME, SCHEDULED, ESTIMATED, UNKNOWN]
@@ -801,6 +805,8 @@ components:
               type: boolean
             dataConfidence:
               $ref: '#/components/schemas/DataConfidence'
+            dataSource:
+              $ref: '#/components/schemas/DataSource'
     LowFloorStatus:
       type: string
       enum: [CONFIRMED, EXPECTED, NOT_LOW_FLOOR, UNKNOWN]
@@ -844,6 +850,8 @@ components:
               $ref: '#/components/schemas/TimeSource'
             dataConfidence:
               $ref: '#/components/schemas/DataConfidence'
+            dataSource:
+              $ref: '#/components/schemas/DataSource'
     FacilityStatus:
       type: string
       enum: [AVAILABLE, UNAVAILABLE, UNKNOWN]
@@ -864,6 +872,8 @@ components:
           format: date-time
         dataConfidence:
           $ref: '#/components/schemas/DataConfidence'
+        dataSource:
+          $ref: '#/components/schemas/DataSource'
     SubwayLeg:
       unevaluatedProperties: false
       allOf:

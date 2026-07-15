@@ -2,6 +2,8 @@
 
 이 문서는 사람이 읽는 API 요약입니다. 필드 수준의 단일 기준은 [OpenAPI 3.1 문서](openapi.yaml)입니다.
 
+> 현재 백엔드 수직 슬라이스는 프로필 조회, 경로 검색·조회, 안내 시작·위치 처리·재탐색을 구현합니다. 인증은 `Bearer demo-token`을 사용합니다. 회원가입·로그인·프로필 수정·장소 검색·안내 완료는 프론트 계약과 후속 범위로 유지됩니다.
+
 ## 1. 공통 규칙
 
 - Base URL: `/api/v1`
@@ -13,7 +15,8 @@
 - 좌표계: WGS84, 객체는 `{ "latitude", "longitude" }`
 - GeoJSON: `LineString.coordinates`는 `[longitude, latitude]`
 - 인증: `Authorization: Bearer <accessToken>`
-- JWT 만료: 발급 후 24시간. 만료 후 다시 로그인합니다.
+- 현재 구현 인증: `Bearer demo-token`
+- 후속 인증 계약: JWT 만료는 발급 후 24시간이며 만료 후 다시 로그인합니다.
 
 ## 2. 엔드포인트
 
@@ -117,6 +120,7 @@
 - `timeSource`: 출발시각의 `REALTIME | SCHEDULED | ESTIMATED | UNKNOWN`
 - `facilityStatus`: 시설의 `AVAILABLE | UNAVAILABLE | UNKNOWN`
 - `lowFloorStatus`: `CONFIRMED | EXPECTED | NOT_LOW_FLOOR | UNKNOWN`
+- `dataSource`: `TMAP | SEOUL_OPEN_DATA | SYNTHETIC_FIXTURE | TEAM_ENGINE | UNKNOWN`
 
 접근 가능한 경로가 없는 것은 정상 검색 결과입니다.
 
@@ -227,6 +231,8 @@
 - 공급자 경로 원본과 정규화 경로는 검색 후 10분만 보관합니다.
 - 만료된 `routeId`로 상세조회·안내 시작을 할 수 없습니다.
 - TMAP·공공데이터 키는 백엔드 환경변수로만 관리합니다.
+- TMAP 후보 경로만 10분 캐시하고 버스·지하철 실시간 도착정보는 경로 검색마다 다시 보강합니다.
+- 개인화 엔진은 사용자의 승차 지점 도착 예상시각에 60초 여유를 더한 뒤 탑승 가능한 실시간 차량을 선택합니다.
 - 카카오맵 JavaScript 키는 프론트에서 사용하되 도메인을 제한합니다.
 - 비밀번호는 평문·복호화 가능한 형태로 저장하지 않습니다.
 - 이메일·사용자 ID·이동 프로필은 외부 경로 공급자에게 전송하지 않습니다.

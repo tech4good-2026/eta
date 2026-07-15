@@ -1,0 +1,294 @@
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from math import asin, cos, radians, sin, sqrt
+from uuid import uuid4
+
+from app.errors import ApiError
+from app.models import (
+    Coordinate,
+    GuidanceInstruction,
+    LegMode,
+    LocationSample,
+    NavigationSession,
+    NavigationStatus,
+    NavigationUpdate,
+    PlaceInput,
+    RerouteReason,
+    RerouteRequest,
+    RerouteSuggestion,
+    RouteLeg,
+    RouteSearchRequest,
+    UserProfile,
+)
+from app.providers.seoul import SeoulDataClient
+from app.services import RouteService
+from app.storage import MemoryTTLStore, StoreState
+
+
+@dataclass
+class NavigationState:
+    session: NavigationSession
+    route_request: RouteSearchRequest
+    last_processed_at: datetime | None = None
+    off_route_sample_count: int = 0
+    missed_transit_sample_count: int = 0
+
+
+class NavigationService:
+    min_position_interval_sec = 5
+    off_route_threshold_m = 60
+    boarding_geofence_m = 150
+    missed_departure_grace_sec = 60
+    consecutive_samples_required = 2
+
+    def __init__(
+        self,
+        route_service: RouteService,
+        store: MemoryTTLStore[NavigationState],
+        ttl_sec: int = 7200,
+        clock: Callable[[], datetime] | None = None,
+        seoul: SeoulDataClient | None = None,
+    ) -> None:
+        self.route_service = route_service
+        self.store = store
+        self.ttl_sec = ttl_sec
+        self.clock = clock or (lambda: datetime.now().astimezone())
+        self.seoul = seoul
+
+    def start(self, route_id: str) -> NavigationSession:
+        stored = self.route_service.get_stored_route(route_id)
+        now = self.clock()
+        session = NavigationSession(
+            session_id=f"nav_{uuid4().hex}",
+            status=NavigationStatus.ACTIVE,
+            route_revision=1,
+            route=stored.route,
+            started_at=now,
+            updated_at=now,
+            next_instruction=self._next_instruction(stored.route.legs[0]),
+        )
+        self.store.put(
+            session.session_id,
+            NavigationState(session=session, route_request=stored.request),
+            self.ttl_sec,
+        )
+        return session
+
+    async def update_position(
+        self, session_id: str, sample: LocationSample
+    ) -> NavigationUpdate:
+        state = self._get_state(session_id)
+        if state.last_processed_at is not None:
+            elapsed = (sample.recorded_at - state.last_processed_at).total_seconds()
+            if elapsed < self.min_position_interval_sec:
+                return self._as_update(state.session)
+
+        state.last_processed_at = sample.recorded_at
+        transit_leg = self._next_transit_leg(state.session.route.legs)
+        missed = False
+        if transit_leg is not None and transit_leg.departure_at is not None:
+            near_boarding = (
+                self._distance_m(sample.coordinate, transit_leg.start.coordinate)
+                <= self.boarding_geofence_m + sample.accuracy_m
+            )
+            departure_passed = sample.recorded_at >= transit_leg.departure_at + timedelta(
+                seconds=self.missed_departure_grace_sec
+            )
+            missed = near_boarding and departure_passed
+
+        if missed:
+            state.missed_transit_sample_count += 1
+        else:
+            state.missed_transit_sample_count = 0
+
+        distance_to_route = self._distance_to_route_m(
+            sample.coordinate, state.session.route.legs
+        )
+        off_route = distance_to_route > self.off_route_threshold_m + sample.accuracy_m
+        if off_route:
+            state.off_route_sample_count += 1
+        else:
+            state.off_route_sample_count = 0
+
+        suggestion = None
+        if state.missed_transit_sample_count >= self.consecutive_samples_required:
+            message = "대중교통을 놓친 것 같아요. 현재 위치에서 다시 찾을까요?"
+            if self.seoul is not None and transit_leg is not None:
+                try:
+                    next_arrival = await self.seoul.get_next_arrival_sec(transit_leg.start.name)
+                except ApiError:
+                    next_arrival = None
+                if next_arrival is not None:
+                    minutes = max(1, round(next_arrival / 60))
+                    message = f"대중교통을 놓친 것 같아요. 다음 도착은 약 {minutes}분 후입니다."
+            suggestion = RerouteSuggestion(
+                reason=RerouteReason.MISSED_TRANSIT,
+                message=message,
+                detected_at=sample.recorded_at,
+            )
+        elif state.off_route_sample_count >= self.consecutive_samples_required:
+            suggestion = RerouteSuggestion(
+                reason=RerouteReason.OFF_ROUTE,
+                message="경로에서 벗어난 것 같아요. 현재 위치에서 다시 찾을까요?",
+                detected_at=sample.recorded_at,
+            )
+
+        status = (
+            NavigationStatus.REROUTE_SUGGESTED
+            if suggestion is not None
+            else NavigationStatus.ACTIVE
+        )
+        state.session = state.session.model_copy(
+            update={
+                "status": status,
+                "updated_at": sample.recorded_at,
+                "reroute_suggestion": suggestion,
+            }
+        )
+        self.store.put(session_id, state, self.ttl_sec)
+        return self._as_update(state.session)
+
+    async def reroute(
+        self,
+        session_id: str,
+        request: RerouteRequest,
+        profile: UserProfile,
+    ) -> NavigationSession:
+        state = self._get_state(session_id)
+        if request.current_station is not None:
+            origin = request.current_station
+        else:
+            assert request.current_location is not None
+            origin = PlaceInput(
+                name="현재 위치",
+                coordinate=request.current_location.coordinate,
+            )
+        recorded_at = (
+            request.current_location.recorded_at
+            if request.current_location is not None
+            else self.clock()
+        )
+        route_request = RouteSearchRequest(
+            origin=origin,
+            destination=state.route_request.destination,
+            mode=state.route_request.mode,
+            departure_at=recorded_at,
+        )
+        searched = await self.route_service.search(route_request, profile)
+        if not searched.routes:
+            raise ApiError(
+                422,
+                "NO_ACCESSIBLE_ROUTE",
+                "현재 위치에서 이용 가능한 경로를 찾지 못했습니다.",
+                {"fallbackModes": searched.fallback_modes},
+            )
+        route = searched.routes[0]
+        now = self.clock()
+        state.session = NavigationSession(
+            session_id=state.session.session_id,
+            status=NavigationStatus.ACTIVE,
+            route_revision=state.session.route_revision + 1,
+            route=route,
+            started_at=state.session.started_at,
+            updated_at=now,
+            next_instruction=self._next_instruction(route.legs[0]),
+        )
+        state.route_request = route_request
+        state.last_processed_at = None
+        state.off_route_sample_count = 0
+        state.missed_transit_sample_count = 0
+        self.store.put(session_id, state, self.ttl_sec)
+        return state.session
+
+    def debug_state(self, session_id: str) -> NavigationState:
+        return self._get_state(session_id)
+
+    def _get_state(self, session_id: str) -> NavigationState:
+        result = self.store.get(session_id)
+        if result.state != StoreState.ACTIVE or result.value is None:
+            raise ApiError(404, "SESSION_NOT_FOUND", "안내 세션을 찾을 수 없습니다.")
+        return result.value
+
+    @staticmethod
+    def _as_update(session: NavigationSession) -> NavigationUpdate:
+        return NavigationUpdate(
+            session_id=session.session_id,
+            status=session.status,
+            route_revision=session.route_revision,
+            updated_at=session.updated_at,
+            next_instruction=session.next_instruction,
+            reroute_suggestion=session.reroute_suggestion,
+        )
+
+    @staticmethod
+    def _next_instruction(leg: RouteLeg) -> GuidanceInstruction:
+        if leg.mode in {LegMode.BUS, LegMode.SUBWAY}:
+            expected_at = leg.departure_at
+            message = f"{getattr(leg, 'route_name', None) or getattr(leg, 'line_name', '대중교통')}에 탑승하세요."
+            instruction_type = "BOARD"
+        elif leg.mode == LegMode.WALK:
+            expected_at = None
+            message = leg.steps[0].instruction
+            instruction_type = "WALK"
+        else:
+            expected_at = None
+            message = "택시 예상 경로를 따라 이동하세요."
+            instruction_type = "BOARD"
+        return GuidanceInstruction(
+            instruction_id=f"instruction_{uuid4().hex}",
+            type=instruction_type,
+            message=message,
+            distance_to_action_m=leg.distance_m,
+            expected_at=expected_at,
+        )
+
+    @staticmethod
+    def _next_transit_leg(legs: list[RouteLeg]):
+        return next(
+            (leg for leg in legs if leg.mode in {LegMode.BUS, LegMode.SUBWAY}),
+            None,
+        )
+
+    @classmethod
+    def _distance_to_route_m(cls, coordinate: Coordinate, legs: list[RouteLeg]) -> float:
+        distances = []
+        for leg in legs:
+            points = leg.geometry.coordinates
+            for start, end in zip(points, points[1:], strict=False):
+                distances.append(cls._point_to_segment_m(coordinate, start, end))
+        return min(distances) if distances else float("inf")
+
+    @staticmethod
+    def _point_to_segment_m(
+        point: Coordinate, start: list[float], end: list[float]
+    ) -> float:
+        latitude_scale = 111_320.0
+        longitude_scale = latitude_scale * cos(radians(point.latitude))
+        start_x = (start[0] - point.longitude) * longitude_scale
+        start_y = (start[1] - point.latitude) * latitude_scale
+        end_x = (end[0] - point.longitude) * longitude_scale
+        end_y = (end[1] - point.latitude) * latitude_scale
+        delta_x = end_x - start_x
+        delta_y = end_y - start_y
+        squared_length = delta_x * delta_x + delta_y * delta_y
+        if squared_length == 0:
+            return sqrt(start_x * start_x + start_y * start_y)
+        projection = max(
+            0.0,
+            min(1.0, -(start_x * delta_x + start_y * delta_y) / squared_length),
+        )
+        closest_x = start_x + projection * delta_x
+        closest_y = start_y + projection * delta_y
+        return sqrt(closest_x * closest_x + closest_y * closest_y)
+
+    @staticmethod
+    def _distance_m(first: Coordinate, second: Coordinate) -> float:
+        first_latitude = radians(first.latitude)
+        second_latitude = radians(second.latitude)
+        delta_latitude = second_latitude - first_latitude
+        delta_longitude = radians(second.longitude - first.longitude)
+        value = sin(delta_latitude / 2) ** 2 + (
+            cos(first_latitude) * cos(second_latitude) * sin(delta_longitude / 2) ** 2
+        )
+        return 2 * 6_371_000 * asin(sqrt(value))

@@ -33,19 +33,21 @@ VITE_KAKAO_MAP_KEY=...
 ### 백엔드
 
 ```env
-JWT_SECRET=...
-DATABASE_URL=sqlite:///./tech4good.db
-KAKAO_REST_API_KEY=...
+ROUTE_PROVIDER=mock
+DEMO_TOKEN=demo-token
+CORS_ORIGINS=["http://localhost:5173"]
 TMAP_APP_KEY=...
-SEOUL_OPEN_DATA_KEY=...
-PUBLIC_DATA_SERVICE_KEY=...
-FRONTEND_ORIGIN=http://localhost:5173
+SEOUL_API_KEY=...
+SEOUL_SUBWAY_API_KEY=...
+SEOUL_BUS_API_KEY=... # 공공데이터포털 디코딩 인증키
 ```
 
 - [ ] 실제 키가 Git에 포함되지 않았습니다.
 - [ ] 카카오 웹 도메인에 localhost와 배포 도메인을 등록했습니다.
 - [ ] TMAP 호출은 백엔드에서만 이루어집니다.
-- [ ] FastAPI CORS는 `FRONTEND_ORIGIN`만 허용합니다.
+- [ ] FastAPI CORS는 `CORS_ORIGINS`에 등록한 프론트 주소만 허용합니다.
+- [ ] `ROUTE_PROVIDER=tmap`에서는 TMAP·서울 일반·서울 실시간 지하철 키가 모두 등록되어 있습니다.
+- [ ] 실시간 저상버스를 시연한다면 공공데이터포털의 노선정보조회·버스도착정보조회 활용 신청 후 `SEOUL_BUS_API_KEY`를 등록했습니다.
 
 ## 4. 데이터 출처와 화면 표시
 
@@ -53,9 +55,11 @@ FRONTEND_ORIGIN=http://localhost:5173
 |---|---|---|---|
 | 지도 | Kakao Maps JavaScript SDK | 지도 저작권 표시 유지 | 검색·리스트 UI 유지 |
 | 장소 | Kakao Local API | 공급자 장소명·주소 | 재시도 또는 직접 좌표 불가 안내 |
-| 대중교통 | TMAP Transit | `SCHEDULED` 중심 | 10분 이내 동일 검색 캐시 또는 오류 |
+| 대중교통 경로 | TMAP Transit | `SCHEDULED` | 후보 경로 10분 캐시 또는 오류 |
+| 버스 도착·저상 여부 | 서울 버스 API | `REALTIME`, `SEOUL_OPEN_DATA` | `UNKNOWN` 경고 후 시간표 유지 |
+| 지하철 도착 | 서울 실시간 지하철 API | `REALTIME`, `SEOUL_OPEN_DATA` | 시간표 출발시각 유지 |
 | 택시·도보 | TMAP 자동차·보행 경로 | `ESTIMATED` | 해당 탭 오류, 다른 탭 유지 |
-| 저상버스 | 서울 버스 공공데이터 | `VERIFIED/UNKNOWN` | `UNKNOWN` 경고 |
+| 경사·단차 | 현재 합성 fixture, 후속 팀원 모듈 | `SYNTHETIC_FIXTURE` | `UNKNOWN` 경고 |
 | 지하철 시설 | 서울교통공사 공공데이터 | 상태·갱신시각 | `UNKNOWN` 경고 |
 | 경사·보행 접근성 | 서울 데이터와 팀 가공값 | `VERIFIED/ESTIMATED/UNKNOWN` | 안전 보장 금지, 주의 경고 |
 
@@ -113,3 +117,4 @@ FRONTEND_ORIGIN=http://localhost:5173
 - [ ] 같은 안내 세션에서 재탐색 후 `routeRevision`이 증가합니다.
 - [ ] 안내 종료 후 원본 위치가 저장되지 않고 속도 집계만 남습니다.
 - [ ] 실제·시간표·추정·미확인·Mock 데이터가 명확하게 구분됩니다.
+- [ ] 백엔드 `uv run pytest`, `uv run ruff check .`, Docker health 검증이 통과합니다.

@@ -1,0 +1,10 @@
+.git
+.worktrees
+.venv
+backend/.venv
+backend/.pytest_cache
+backend/.ruff_cache
+**/__pycache__
+**/*.pyc
+mocks
+docs
