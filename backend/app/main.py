@@ -12,8 +12,10 @@ from app.auth import DemoUser
 from app.config import Settings, get_settings
 from app.errors import ApiError, api_error_handler, validation_error_handler
 from app.models import (
+    CompleteNavigationRequest,
     LocationSample,
     MobilityAid,
+    NavigationCompletion,
     NavigationSession,
     NavigationUpdate,
     ProfilePreferences,
@@ -23,11 +25,13 @@ from app.models import (
     RouteSearchResponse,
     StartNavigationRequest,
     TravelerType,
+    UpdateProfileRequest,
     UserProfile,
     WalkingSpeedProfile,
 )
 from app.navigation import NavigationService, NavigationState
 from app.personalization import BaselinePersonalizationEngine
+from app.profile import DemoProfileStore
 from app.providers.accessibility import HybridAccessibilityProvider
 from app.providers.mock import MockRouteProvider
 from app.providers.seoul import SeoulDataClient
@@ -63,6 +67,7 @@ def demo_profile() -> UserProfile:
 class ApplicationContainer:
     route_service: RouteService
     navigation_service: NavigationService
+    profile_store: DemoProfileStore
     http_client: httpx.AsyncClient | None = None
 
     async def close(self) -> None:
@@ -113,6 +118,7 @@ def build_container(settings: Settings) -> ApplicationContainer:
     return ApplicationContainer(
         route_service=service,
         navigation_service=navigation_service,
+        profile_store=DemoProfileStore(demo_profile()),
         http_client=client,
     )
 
@@ -152,7 +158,17 @@ def create_app(
         response_model_exclude_none=True,
     )
     async def get_profile(_user: DemoUser) -> UserProfile:
-        return demo_profile()
+        return dependencies.profile_store.get()
+
+    @app.put(
+        "/api/v1/users/me/profile",
+        response_model=UserProfile,
+        response_model_exclude_none=True,
+    )
+    async def replace_profile(
+        request: UpdateProfileRequest, _user: DemoUser
+    ) -> UserProfile:
+        return dependencies.profile_store.replace(request)
 
     @app.post(
         "/api/v1/routes/search",
@@ -162,7 +178,9 @@ def create_app(
     async def search_routes(
         request: RouteSearchRequest, _user: DemoUser
     ) -> RouteSearchResponse:
-        return await dependencies.route_service.search(request, demo_profile())
+        return await dependencies.route_service.search(
+            request, dependencies.profile_store.get()
+        )
 
     @app.get(
         "/api/v1/routes/{route_id}",
@@ -202,7 +220,21 @@ def create_app(
         session_id: str, request: RerouteRequest, _user: DemoUser
     ) -> NavigationSession:
         return await dependencies.navigation_service.reroute(
-            session_id, request, demo_profile()
+            session_id, request, dependencies.profile_store.get()
+        )
+
+    @app.post(
+        "/api/v1/navigation/sessions/{session_id}/complete",
+        response_model=NavigationCompletion,
+        response_model_exclude_none=True,
+    )
+    async def complete_navigation(
+        session_id: str,
+        request: CompleteNavigationRequest,
+        _user: DemoUser,
+    ) -> NavigationCompletion:
+        return dependencies.navigation_service.complete(
+            session_id, request, dependencies.profile_store.get()
         )
 
     return app

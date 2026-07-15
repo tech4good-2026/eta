@@ -59,6 +59,12 @@ class UserProfile(ApiModel):
     walking_speed: WalkingSpeedProfile
 
 
+class UpdateProfileRequest(ApiModel):
+    traveler_types: list[TravelerType] = Field(min_length=1)
+    mobility_aids: list[MobilityAid]
+    preferences: ProfilePreferences
+
+
 class RouteMode(StrEnum):
     TRANSIT = "TRANSIT"
     TAXI = "TAXI"
@@ -322,3 +328,17 @@ class RerouteRequest(ApiModel):
         if self.current_location is None and self.current_station is None:
             raise ValueError("currentLocation or currentStation is required")
         return self
+
+
+class CompleteNavigationRequest(ApiModel):
+    reason: Literal["ARRIVED", "USER_STOPPED"]
+    completed_at: datetime
+
+
+class NavigationCompletion(ApiModel):
+    session_id: str
+    status: Literal["COMPLETED"] = "COMPLETED"
+    route_revision: int = Field(ge=1)
+    completed_at: datetime
+    walking_speed_updated: bool
+    walking_speed: WalkingSpeedProfile

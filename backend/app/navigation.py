@@ -6,10 +6,12 @@ from uuid import uuid4
 
 from app.errors import ApiError
 from app.models import (
+    CompleteNavigationRequest,
     Coordinate,
     GuidanceInstruction,
     LegMode,
     LocationSample,
+    NavigationCompletion,
     NavigationSession,
     NavigationStatus,
     NavigationUpdate,
@@ -200,6 +202,35 @@ class NavigationService:
         state.missed_transit_sample_count = 0
         self.store.put(session_id, state, self.ttl_sec)
         return state.session
+
+    def complete(
+        self,
+        session_id: str,
+        request: CompleteNavigationRequest,
+        profile: UserProfile,
+    ) -> NavigationCompletion:
+        state = self._get_state(session_id)
+        if state.session.status == NavigationStatus.COMPLETED:
+            raise ApiError(
+                409,
+                "SESSION_ALREADY_COMPLETED",
+                "이미 완료된 안내 세션입니다.",
+            )
+        state.session = state.session.model_copy(
+            update={
+                "status": NavigationStatus.COMPLETED,
+                "updated_at": request.completed_at,
+                "reroute_suggestion": None,
+            }
+        )
+        self.store.put(session_id, state, self.ttl_sec)
+        return NavigationCompletion(
+            session_id=session_id,
+            route_revision=state.session.route_revision,
+            completed_at=request.completed_at,
+            walking_speed_updated=False,
+            walking_speed=profile.walking_speed,
+        )
 
     def debug_state(self, session_id: str) -> NavigationState:
         return self._get_state(session_id)

@@ -7,8 +7,8 @@
 ```text
 React + Vite
   → FastAPI /api/v1
-     ├─ Demo Bearer 인증·고정 이동 프로필
-     ├─ 장소 검색·지도 → Kakao
+     ├─ Demo Bearer 인증·가변 이동 프로필
+     ├─ 지도·브라우저 장소 검색 → Kakao
      ├─ 대중교통·자동차·보행 경로 → TMAP
      ├─ 버스 도착·저상 차량 → 서울 버스 실시간 API
      ├─ 지하철 도착·엘리베이터 → 서울 열린데이터광장
@@ -18,7 +18,18 @@ React + Vite
 
 서비스 품질 보장 범위는 서울시입니다. API와 데이터 모델은 다른 지역의 제공자를 어댑터로 추가할 수 있게 설계합니다.
 
-현재 백엔드는 경로 검색부터 안내·자동 재탐색 제안까지의 수직 슬라이스가 구현되어 있습니다. 이메일 회원가입·JWT·SQLite와 장소 검색은 계약에는 남아 있지만 후속 구현 범위입니다.
+현재는 ETA_v2 프론트와 경로 검색부터 안내·자동 재탐색 제안·완료까지의 백엔드 수직 슬라이스가 연결되어 있습니다. 이메일 회원가입·JWT·SQLite와 백엔드 장소 검색은 후속 구현 범위입니다.
+
+## 프론트 실행
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+`frontend/.env`에 카카오 JavaScript 키를 설정합니다. 데모 로그인은 `test@eta.com / password123`이며, 상세 내용은 [프론트 README](frontend/README.md)를 참고합니다.
 
 ## 백엔드 실행
 
@@ -42,14 +53,14 @@ uv run uvicorn app.main:app --reload
 | [인계 체크리스트](docs/handoff-checklist.md) | 역할, API 키, 데이터 출처, 시연 및 장애 대응 |
 | [Mock 사용 안내](mocks/README.md) | 화면과 fixture의 연결 관계 및 사용법 |
 | [백엔드 실행 안내](backend/README.md) | FastAPI 실행, 공급자 모드, 테스트와 Docker 배포 |
+| [프론트 실행 안내](frontend/README.md) | Vite 환경변수, 데모 로그인과 검증 명령 |
 
 ## 프론트 개발 방법
 
-1. `docs/openapi.yaml`의 스키마를 기준으로 타입을 정의합니다.
-2. 백엔드 연결 전에는 `mocks/`의 JSON을 그대로 응답으로 사용합니다.
-3. 각 탭은 처음 열릴 때 해당 `mode`의 `POST /api/v1/routes/search`를 호출합니다.
-4. 실제 API 연결 시 fixture 로딩 부분만 `VITE_API_BASE_URL` 기반 호출로 교체합니다.
-5. TMAP·공공데이터 키는 프론트 번들에 넣지 않습니다. 카카오맵 JavaScript 키는 허용 도메인을 제한합니다.
+1. `frontend/.env.example`을 `.env`로 복사하고 카카오 JavaScript 키를 설정합니다.
+2. 각 탭은 처음 열릴 때 해당 `mode`의 `POST /api/v1/routes/search`를 호출하고 같은 조건은 캐시합니다.
+3. API 타입과 UI 매퍼는 `frontend/src/api/`에서 관리합니다.
+4. TMAP·공공데이터 키는 프론트 번들에 넣지 않습니다. 카카오맵 JavaScript 키는 허용 도메인을 제한합니다.
 
 Mock 데이터는 TMAP 응답을 복제하지 않은 합성 데이터이며 실제 운행정보가 아닙니다.
 
