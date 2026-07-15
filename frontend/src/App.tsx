@@ -95,6 +95,7 @@ export default function App() {
   const [navigationStartSpeed, setNavigationStartSpeed] = useState(1);
   const routeCacheRef = useRef(new Map<string, { status: "SUCCESS" | "NO_ACCESSIBLE_ROUTE"; routes: RouteInfo[] }>());
   const locationRequestInFlightRef = useRef(false);
+  const pendingRouteDestinationRef = useRef<Place | null>(null);
 
   // Toast status
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -130,6 +131,13 @@ export default function App() {
 
   // Request browser location permission and optionally continue route search (F-MAP-02).
   const requestCurrentOrigin = async (routeDestination?: Place) => {
+    if (routeDestination) {
+      pendingRouteDestinationRef.current = routeDestination;
+      setDestination(routeDestination);
+      setScreen("main");
+      showToast("현재 위치를 확인한 뒤 경로를 탐색합니다.");
+    }
+
     if (locationRequestInFlightRef.current) return;
 
     locationRequestInFlightRef.current = true;
@@ -142,12 +150,17 @@ export default function App() {
       setGeolocationStatus("GRANTED");
       setCurrentCoords(nextCoords);
       setOrigin(currentOrigin);
-      showToast("현재 위치를 출발지로 설정했습니다.");
 
-      if (routeDestination) {
-        await handleQueryRoutes(mode, currentOrigin, routeDestination);
+      const destinationToRoute = pendingRouteDestinationRef.current;
+      pendingRouteDestinationRef.current = null;
+
+      if (destinationToRoute) {
+        await handleQueryRoutes(mode, currentOrigin, destinationToRoute);
+      } else {
+        showToast("현재 위치를 출발지로 설정했습니다.");
       }
     } catch {
+      pendingRouteDestinationRef.current = null;
       setGeolocationStatus("DENIED");
       setSearchQuery("");
       setScreen("search");

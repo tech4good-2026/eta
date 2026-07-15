@@ -5,23 +5,48 @@ export interface Coordinates {
   lng: number;
 }
 
+export const DEFAULT_GEOLOCATION_TIMEOUT_MS = 8_000;
+
 export function getCurrentCoordinates(
   geolocation: Geolocation | undefined,
+  timeoutMs = DEFAULT_GEOLOCATION_TIMEOUT_MS,
 ): Promise<Coordinates> {
   if (!geolocation) {
     return Promise.reject(new Error("GEOLOCATION_UNAVAILABLE"));
   }
 
   return new Promise((resolve, reject) => {
-    geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-      },
-      reject,
-    );
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      globalThis.clearTimeout(timeoutId);
+      callback();
+    };
+    const timeoutId = globalThis.setTimeout(() => {
+      finish(() => reject(new Error("GEOLOCATION_TIMEOUT")));
+    }, timeoutMs);
+
+    try {
+      geolocation.getCurrentPosition(
+        (position) => {
+          finish(() => {
+            resolve({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+          });
+        },
+        (error) => finish(() => reject(error)),
+        {
+          enableHighAccuracy: true,
+          timeout: timeoutMs,
+          maximumAge: 30_000,
+        },
+      );
+    } catch (error) {
+      finish(() => reject(error));
+    }
   });
 }
 

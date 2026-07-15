@@ -43,4 +43,12 @@ describe("default current location origin", () => {
 
     expect(source).toContain("void requestCurrentOrigin(searchTarget)");
   });
+
+  it("keeps a destination selected while a location request is already pending", () => {
+    const source = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+
+    expect(source).toContain("pendingRouteDestinationRef.current = routeDestination");
+    expect(source).toContain("const destinationToRoute = pendingRouteDestinationRef.current");
+    expect(source).toContain('showToast("현재 위치를 확인한 뒤 경로를 탐색합니다.")');
+  });
 });
