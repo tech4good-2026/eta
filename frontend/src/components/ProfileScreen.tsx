@@ -113,7 +113,7 @@ export function ProfileScreen({
   const getDeviceLabel = (code: string) => DEVICE_OPTIONS.find((d) => d.code === code)?.label || code;
 
   return (
-    <div className="flex-1 flex flex-col px-6 py-5 bg-slate-50" id="view-profile-screen">
+    <div className="flex-1 flex flex-col px-6 py-5 bg-slate-50 overflow-y-auto custom-scrollbar" id="view-profile-screen">
       {/* Progress top indicator */}
       {!isEditMode && (
         <div className="flex justify-between gap-1.5 w-full mb-5">
