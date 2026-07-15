@@ -444,7 +444,8 @@ export default function App() {
 
               {/* Float Search Entry Panel */}
               <div className="absolute top-4 left-4 right-4 z-10 space-y-2">
-                <div
+                <button
+                  type="button"
                   onClick={() => {
                     if (isOffline) {
                       showToast("오프라인 상태입니다. 새로운 탐색이 불가능합니다.");
@@ -452,13 +453,13 @@ export default function App() {
                     }
                     setScreen("search");
                   }}
-                  className="bg-white p-3.5 rounded-[18px] border border-slate-200 shadow-md flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-all"
+                  className="w-full text-left bg-white p-3.5 rounded-[18px] border border-slate-200 shadow-md flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-all"
                 >
                   <Search className="w-5 h-5 text-slate-400" />
                   <span className="text-[13.5px] font-bold text-slate-400">
                     {destination ? destination.name : "어디로 안전하게 우회하여 이동할까요?"}
                   </span>
-                </div>
+                </button>
 
                 {origin && (
                   <div className="bg-white/95 backdrop-blur px-3 py-2 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center text-[11.5px] font-bold text-slate-700">
@@ -601,10 +602,11 @@ export default function App() {
               ) : (
                 <div className="space-y-2">
                   {placeResults.map((p) => (
-                    <div
+                    <button
+                      type="button"
                       key={p.id}
                       onClick={() => openPlace(p)}
-                      className="p-3.5 rounded-xl border border-slate-150 hover:bg-slate-50 transition-all cursor-pointer flex justify-between items-start"
+                      className="w-full text-left p-3.5 rounded-xl border border-slate-150 hover:bg-slate-50 transition-all cursor-pointer flex justify-between items-start"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
@@ -619,7 +621,7 @@ export default function App() {
                         )}
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-400 mt-1 shrink-0 ml-2" />
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -795,13 +797,14 @@ export default function App() {
                     const isUnavailable = route.accessibilityStatus === "UNAVAILABLE";
 
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={route.id}
                         onClick={() => {
                           setSelectedRoute(route);
                           setScreen("route-detail");
                         }}
-                        className={`p-4 bg-white rounded-2xl border-[1.5px] hover:border-blue-500 transition-all cursor-pointer shadow-sm space-y-3 ${
+                        className={`w-full text-left p-4 bg-white rounded-2xl border-[1.5px] hover:border-blue-500 transition-all cursor-pointer shadow-sm space-y-3 ${
                           isUnavailable ? "opacity-60 bg-slate-50 border-slate-200" : "border-slate-150"
                         }`}
                       >
@@ -870,7 +873,7 @@ export default function App() {
                             ))}
                           </div>
                         )}
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
