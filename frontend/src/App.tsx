@@ -935,7 +935,13 @@ export default function App() {
                 level={4}
                 markers={[
                   { lat: origin.lat, lng: origin.lng, title: origin.name, type: "origin" },
-                  { lat: destination.lat, lng: destination.lng, title: destination.name, type: "dest" }
+                  { lat: destination.lat, lng: destination.lng, title: destination.name, type: "dest" },
+                  ...selectedRoute.facilityMarkers.map((facility) => ({
+                    lat: facility.lat,
+                    lng: facility.lng,
+                    title: `${facility.station} 엘리베이터 ${facility.count}대`,
+                    type: "elevator" as const,
+                  }))
                 ]}
                 routePath={selectedRoute.mapPoints}
                 routeSegments={selectedRoute.mapSegments}

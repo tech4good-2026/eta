@@ -420,14 +420,42 @@ class BaselinePersonalizationEngine:
             departure = max(leg.departure_at or earliest_boarding_at, earliest_boarding_at)
             time_source = leg.time_source
         arrival = departure + timedelta(seconds=leg.duration_sec)
-        facility = StationFacility(
-            type="ELEVATOR",
-            status=elevator,
-            location_description=value.location_description if value else None,
-            observed_at=value.observed_at if value else None,
-            data_confidence=confidence,
-            data_source=value.source if value else DataSource.UNKNOWN,
-        )
+        facilities: list[StationFacility] = []
+        # 역사 내 엘리베이터 개별 위치(방면·출구·운행층)를 승차역/하차역 좌표에
+        # 붙여 지도 표시가 가능하게 한다.
+        for units, place in (
+            (value.boarding_units if value else (), leg.start),
+            (value.alighting_units if value else (), leg.end),
+        ):
+            for unit in units:
+                detail = " · ".join(
+                    part
+                    for part in (unit.location_description, unit.floors)
+                    if part
+                )
+                facilities.append(
+                    StationFacility(
+                        type="ELEVATOR",
+                        status=unit.status,
+                        location_description=detail or None,
+                        observed_at=value.observed_at if value else None,
+                        station_name=unit.station_name,
+                        coordinate=place.coordinate,
+                        data_confidence=confidence,
+                        data_source=value.source if value else DataSource.UNKNOWN,
+                    )
+                )
+        if not facilities:
+            facilities = [
+                StationFacility(
+                    type="ELEVATOR",
+                    status=elevator,
+                    location_description=value.location_description if value else None,
+                    observed_at=value.observed_at if value else None,
+                    data_confidence=confidence,
+                    data_source=value.source if value else DataSource.UNKNOWN,
+                )
+            ]
         return (
             SubwayLeg(
                 leg_id=leg.provider_leg_id,
@@ -445,7 +473,7 @@ class BaselinePersonalizationEngine:
                 departure_at=departure,
                 arrival_at=arrival,
                 time_source=time_source,
-                facilities=[facility],
+                facilities=facilities,
                 data_confidence=confidence,
             ),
             warnings,

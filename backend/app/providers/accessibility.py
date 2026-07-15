@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from app.domain import (
     AccessibilityContext,
     BusAccessibility,
+    FacilityUnit,
     ProviderRoute,
     RealtimeDeparture,
     StationAccessibility,
@@ -175,6 +176,8 @@ class HybridAccessibilityProvider:
         except ApiError:
             boarding = None
             alighting = None
+        boarding_units = await self._station_units(boarding_station)
+        alighting_units = await self._station_units(alighting_station)
         if boarding is None or alighting is None:
             return StationAccessibility(
                 elevator_status=FacilityStatus.UNKNOWN,
@@ -183,6 +186,8 @@ class HybridAccessibilityProvider:
                 departures=await self._subway_departures(
                     boarding_station, line_name
                 ),
+                boarding_units=boarding_units,
+                alighting_units=alighting_units,
             )
         statuses = {boarding.status, alighting.status}
         status = (
@@ -209,6 +214,29 @@ class HybridAccessibilityProvider:
             observed_at=self.clock(),
             source=DataSource.SEOUL_OPEN_DATA,
             departures=await self._subway_departures(boarding_station, line_name),
+            boarding_units=boarding_units,
+            alighting_units=alighting_units,
+        )
+
+    async def _station_units(self, station_name: str) -> tuple[FacilityUnit, ...]:
+        """역사 내 엘리베이터 개별 위치(방면·출구·운행층) 목록을 실데이터로 조회한다."""
+        if self.seoul is None:
+            return ()
+        get_units = getattr(self.seoul, "get_station_elevators", None)
+        if get_units is None:
+            return ()
+        try:
+            units = await get_units(station_name)
+        except ApiError:
+            return ()
+        return tuple(
+            FacilityUnit(
+                station_name=unit.station_name,
+                location_description=unit.location_description,
+                floors=unit.floors,
+                status=unit.status,
+            )
+            for unit in units
         )
 
     async def _subway_departures(

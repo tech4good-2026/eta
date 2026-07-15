@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from app.domain import (
     AccessibilityContext,
     BusAccessibility,
+    FacilityUnit,
     ProviderLeg,
     ProviderRoute,
     RealtimeDeparture,
@@ -498,6 +499,70 @@ def test_impassable_walkway_makes_route_unavailable() -> None:
     assert any(
         reason.code == "WALKWAY_BLOCKED" for reason in route.unavailable_reasons
     )
+
+
+def test_station_elevator_units_become_facilities_with_coordinates() -> None:
+    board = place("승차역", 37.502, 127.002)
+    alight = place("하차역", 37.51, 127.01)
+    candidate = ProviderRoute(
+        provider_route_id="subway-ev",
+        mode=RouteMode.TRANSIT,
+        title="지하철 경로",
+        standard_duration_sec=600,
+        total_distance_m=3000,
+        walk_distance_m=0,
+        transfer_count=0,
+        fare_krw=1500,
+        legs=[
+            ProviderLeg(
+                provider_leg_id="sub-ev-1",
+                mode=LegMode.SUBWAY,
+                start=board,
+                end=alight,
+                distance_m=3000,
+                duration_sec=600,
+                geometry=line(board, alight),
+                line_id="L2",
+                line_name="2호선",
+            )
+        ],
+    )
+    context = AccessibilityContext(
+        subway={
+            "sub-ev-1": StationAccessibility(
+                elevator_status=FacilityStatus.AVAILABLE,
+                confidence=DataConfidence.VERIFIED,
+                boarding_units=(
+                    FacilityUnit(
+                        station_name="승차역",
+                        location_description="2번 출구 방면",
+                        floors="B2~1",
+                    ),
+                ),
+                alighting_units=(
+                    FacilityUnit(
+                        station_name="하차역",
+                        location_description="환승 통로",
+                        floors="B3~B1",
+                    ),
+                ),
+            )
+        }
+    )
+
+    [route] = BaselinePersonalizationEngine().personalize_routes(
+        [candidate], demo_profile(), context, NOW
+    )
+
+    facilities = route.legs[0].facilities
+    assert len(facilities) == 2
+    assert facilities[0].station_name == "승차역"
+    assert facilities[0].coordinate is not None
+    assert facilities[0].coordinate.latitude == board.coordinate.latitude
+    assert "2번 출구 방면" in facilities[0].location_description
+    assert "B2~1" in facilities[0].location_description
+    assert facilities[1].station_name == "하차역"
+    assert facilities[1].coordinate.longitude == alight.coordinate.longitude
 
 
 def test_slope_penalty_is_larger_for_wheeled_aids() -> None:

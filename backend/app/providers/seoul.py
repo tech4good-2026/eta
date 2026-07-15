@@ -17,6 +17,17 @@ class SeoulElevator:
 
 
 @dataclass(frozen=True)
+class SeoulElevatorUnit:
+    """역사 내 엘리베이터 1대의 위치 정보(서울 열린데이터광장 getFcElvtr)."""
+
+    station_name: str
+    line_name: str | None
+    location_description: str | None
+    floors: str | None
+    status: FacilityStatus = FacilityStatus.AVAILABLE
+
+
+@dataclass(frozen=True)
 class SeoulSubwayArrival:
     arrival_sec: int
     train_id: str | None
@@ -79,6 +90,29 @@ class SeoulDataClient:
         self._elevator_rows = [row for row in raw_rows if isinstance(row, dict)]
         self._elevator_rows_expires_at = now + self.elevator_cache_ttl_sec
         return self._elevator_rows
+
+    async def get_station_elevators(self, station_name: str) -> list[SeoulElevatorUnit]:
+        """해당 역의 엘리베이터 개별 위치 목록(방면·출구·운행층)을 반환한다."""
+        rows = await self._get_elevator_rows()
+        expected = self._station_key(station_name)
+        units: list[SeoulElevatorUnit] = []
+        for row in rows:
+            actual = self._station_key(str(row.get("stnNm") or row.get("STN_NM") or ""))
+            if actual != expected:
+                continue
+            begin_floor = str(row.get("bgngFlr") or "").strip()
+            end_floor = str(row.get("endFlr") or "").strip()
+            floors = f"{begin_floor}~{end_floor}" if begin_floor and end_floor else None
+            location = row.get("dtlPstn") or row.get("dtlLoc") or row.get("fcltLoc")
+            units.append(
+                SeoulElevatorUnit(
+                    station_name=str(row.get("stnNm") or station_name),
+                    line_name=str(row.get("lineNm") or "") or None,
+                    location_description=str(location) if location else None,
+                    floors=floors,
+                )
+            )
+        return units
 
     async def get_next_arrival_sec(self, station_name: str) -> int | None:
         arrivals = await self.get_subway_arrivals(station_name)

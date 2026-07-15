@@ -81,6 +81,61 @@ async def test_elevator_supports_current_seoul_response_envelope() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_station_elevator_units_include_location_and_floors() -> None:
+    respx.get(url__regex=r"http://openapi\.seoul\.go\.kr:8088/.*").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "response": {
+                    "header": {"resultCode": "00"},
+                    "body": {
+                        "items": {
+                            "item": [
+                                {
+                                    "stnNm": "동묘앞",
+                                    "lineNm": "1호선",
+                                    "dtlPstn": "신설동 방면6-2",
+                                    "bgngFlr": "B1",
+                                    "endFlr": "4",
+                                },
+                                {
+                                    "stnNm": "동묘앞",
+                                    "lineNm": "1호선",
+                                    "dtlPstn": "신설동 방면10-3",
+                                    "bgngFlr": "B2",
+                                    "endFlr": "B1",
+                                },
+                                {
+                                    "stnNm": "시청",
+                                    "lineNm": "1호선",
+                                    "dtlPstn": "환승 통로",
+                                    "bgngFlr": "B2",
+                                    "endFlr": "B1",
+                                },
+                            ]
+                        },
+                        "totalCount": 3,
+                    },
+                }
+            },
+        )
+    )
+    async with httpx.AsyncClient() as client:
+        units = await SeoulDataClient(
+            "seoul-general-key",
+            "seoul-subway-key",
+            client,
+        ).get_station_elevators("동묘앞역")
+
+    assert len(units) == 2
+    assert units[0].location_description == "신설동 방면6-2"
+    assert units[0].floors == "B1~4"
+    assert units[1].floors == "B2~B1"
+    assert all(unit.status == FacilityStatus.AVAILABLE for unit in units)
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_realtime_subway_returns_soonest_nonnegative_arrival() -> None:
     upstream = respx.get(url__regex=r"http://swopenapi\.seoul\.go\.kr/.*").mock(
         return_value=httpx.Response(

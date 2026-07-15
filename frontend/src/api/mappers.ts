@@ -1,4 +1,4 @@
-import type { Place, RouteInfo, RouteSegment, UserProfile } from "../types";
+import type { FacilityMarker, Place, RouteInfo, RouteSegment, UserProfile } from "../types";
 import type {
   ApiBusLeg,
   ApiNotice,
@@ -141,12 +141,24 @@ function legToSegment(leg: ApiRouteLeg): RouteSegment {
     };
   }
   if (leg.mode === "SUBWAY") {
+    const located = leg.facilities.filter(
+      (facility) => facility.stationName && facility.locationDescription,
+    );
+    const tags = located.length
+      ? [
+          ...located
+            .slice(0, 3)
+            .map((facility) => `엘리베이터 ${facility.stationName} ${facility.locationDescription}`),
+          ...(located.length > 3 ? [`엘리베이터 외 ${located.length - 3}대`] : []),
+          timeSourceLabel(leg.timeSource),
+        ]
+      : [...leg.facilities.map(facilityLabel), timeSourceLabel(leg.timeSource)];
     return {
       ...common,
       mode: "subway",
       title: `${leg.lineName} 승차`,
       desc: `${leg.boardingStation.name}에서 승차해 ${leg.alightingStation.name}에서 하차합니다.`,
-      tags: [...leg.facilities.map(facilityLabel), timeSourceLabel(leg.timeSource)],
+      tags,
       facilityStatus: subwayFacilityStatus(leg.facilities),
     };
   }
@@ -189,6 +201,34 @@ function collectMapPoints(legs: ApiRouteLeg[]) {
   return points;
 }
 
+function collectFacilityMarkers(legs: ApiRouteLeg[]): FacilityMarker[] {
+  const byStation = new Map<string, FacilityMarker>();
+  for (const leg of legs) {
+    if (leg.mode !== "SUBWAY") continue;
+    for (const facility of leg.facilities) {
+      if (!facility.coordinate || !facility.stationName) continue;
+      const key = facility.stationName;
+      const detail = [facility.locationDescription].filter(Boolean).join(" ");
+      const existing = byStation.get(key);
+      if (existing) {
+        existing.count += 1;
+        if (detail) existing.details.push(detail);
+        if (facility.status === "UNAVAILABLE") existing.status = "UNAVAILABLE";
+      } else {
+        byStation.set(key, {
+          lat: facility.coordinate.latitude,
+          lng: facility.coordinate.longitude,
+          station: facility.stationName,
+          count: 1,
+          details: detail ? [detail] : [],
+          status: facility.status,
+        });
+      }
+    }
+  }
+  return [...byStation.values()];
+}
+
 function collectStations(legs: ApiRouteLeg[]) {
   const stations = new Map<string, Place>();
   for (const leg of legs) {
@@ -221,6 +261,7 @@ export function mapRouteFromApi(route: ApiRoute): RouteInfo {
     segments: route.legs.map(legToSegment),
     mapPoints: collectMapPoints(route.legs),
     mapSegments: collectMapSegments(route.legs),
+    facilityMarkers: collectFacilityMarkers(route.legs),
     stationOptions: collectStations(route.legs),
   };
 }

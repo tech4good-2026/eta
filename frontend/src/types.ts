@@ -42,6 +42,15 @@ export interface RouteNotice {
   text: string;
 }
 
+export interface FacilityMarker {
+  lat: number;
+  lng: number;
+  station: string;
+  count: number;
+  details: string[];
+  status: "AVAILABLE" | "UNAVAILABLE" | "UNKNOWN";
+}
+
 export interface RouteInfo {
   id: string;
   mode: "transit" | "taxi" | "walk";
@@ -57,6 +66,7 @@ export interface RouteInfo {
   segments: RouteSegment[];
   mapPoints: { lat: number; lng: number }[];
   mapSegments: { mode: RouteSegment["mode"]; points: { lat: number; lng: number }[] }[];
+  facilityMarkers: FacilityMarker[];
   stationOptions: Place[];
 }
 

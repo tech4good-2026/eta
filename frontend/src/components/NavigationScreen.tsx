@@ -230,6 +230,12 @@ export function NavigationScreen({
           markers={[
             { lat: latestSampleRef.current.coordinate.latitude, lng: latestSampleRef.current.coordinate.longitude, title: "나의 위치", type: "you" },
             { lat: destination.lat, lng: destination.lng, title: destination.name, type: "dest" },
+            ...route.facilityMarkers.map((facility) => ({
+              lat: facility.lat,
+              lng: facility.lng,
+              title: `${facility.station} 엘리베이터 ${facility.count}대`,
+              type: "elevator" as const,
+            })),
           ]}
           routePath={route.mapPoints}
           routeSegments={route.mapSegments}

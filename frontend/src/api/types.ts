@@ -139,6 +139,8 @@ export interface ApiStationFacility {
   status: "AVAILABLE" | "UNAVAILABLE" | "UNKNOWN";
   locationDescription?: string | null;
   observedAt?: string | null;
+  stationName?: string | null;
+  coordinate?: ApiCoordinate | null;
   dataConfidence: ApiDataConfidence;
   dataSource: ApiDataSource;
 }

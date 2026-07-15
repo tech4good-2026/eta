@@ -86,6 +86,16 @@ class BusAccessibility:
 
 
 @dataclass(frozen=True)
+class FacilityUnit:
+    """역사 내 개별 승강 설비 1대의 위치 정보."""
+
+    station_name: str
+    location_description: str | None = None
+    floors: str | None = None
+    status: FacilityStatus = FacilityStatus.AVAILABLE
+
+
+@dataclass(frozen=True)
 class StationAccessibility:
     elevator_status: FacilityStatus | None = None
     confidence: DataConfidence = DataConfidence.UNKNOWN
@@ -93,6 +103,8 @@ class StationAccessibility:
     observed_at: datetime | None = None
     source: DataSource = DataSource.UNKNOWN
     departures: tuple[RealtimeDeparture, ...] = ()
+    boarding_units: tuple[FacilityUnit, ...] = ()
+    alighting_units: tuple[FacilityUnit, ...] = ()
 
 
 @dataclass(frozen=True)

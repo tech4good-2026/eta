@@ -5,7 +5,7 @@ interface MapMarker {
   lat: number;
   lng: number;
   title?: string;
-  type?: "you" | "origin" | "dest";
+  type?: "you" | "origin" | "dest" | "elevator";
 }
 
 type RouteMode = "walk" | "bus" | "subway" | "taxi";
@@ -150,6 +150,12 @@ export function KakaoMap({
                 <path d="M12 21s-7-6.5-7-11.5A7 7 0 0119 9.5C19 14.5 12 21 12 21z"/>
               </svg>
             </div>
+          </div>`;
+      } else if (marker.type === "elevator") {
+        contentHtml = `
+          <div class="pin elevator select-none pointer-events-none flex flex-col items-center">
+            <div class="w-[24px] h-[24px] rounded-full bg-white border-2 border-emerald-500 flex items-center justify-center text-[9px] font-black text-emerald-600 shadow">EV</div>
+            <div class="bg-emerald-600 text-white text-[9px] font-bold px-1 py-0.5 rounded shadow mt-0.5 whitespace-nowrap">${marker.title || "엘리베이터"}</div>
           </div>`;
       } else if (marker.type === "you") {
         contentHtml = `

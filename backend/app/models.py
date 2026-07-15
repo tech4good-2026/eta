@@ -216,6 +216,8 @@ class StationFacility(ApiModel):
     status: FacilityStatus
     location_description: str | None = None
     observed_at: datetime | None = None
+    station_name: str | None = None
+    coordinate: Coordinate | None = None
     data_confidence: DataConfidence
     data_source: DataSource = DataSource.UNKNOWN
 

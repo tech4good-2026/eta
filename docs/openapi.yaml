@@ -901,6 +901,11 @@ components:
         observedAt:
           type: string
           format: date-time
+        stationName:
+          type: string
+          description: 설비가 위치한 역 이름.
+        coordinate:
+          $ref: '#/components/schemas/Coordinate'
         dataConfidence:
           $ref: '#/components/schemas/DataConfidence'
         dataSource:
