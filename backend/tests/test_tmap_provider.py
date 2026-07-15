@@ -154,6 +154,22 @@ async def test_car_geojson_becomes_taxi_route_with_estimated_fare() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_transit_no_route_result_yields_no_candidates() -> None:
+    respx.post("https://apis.openapi.sk.com/transit/routes").mock(
+        return_value=httpx.Response(
+            200,
+            json={"result": {"status": 11, "message": "출발지와 도착지가 너무 가까움"}},
+        )
+    )
+    async with httpx.AsyncClient() as client:
+        provider = TmapRouteProvider("secret", client)
+        routes = await provider.search(search_request(RouteMode.TRANSIT))
+
+    assert routes == []
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_tmap_timeout_is_exposed_without_mock_fallback() -> None:
     respx.post("https://apis.openapi.sk.com/transit/routes").mock(
         side_effect=httpx.ReadTimeout("slow upstream")
