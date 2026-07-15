@@ -21,6 +21,7 @@ export type ApiTimeSource = "REALTIME" | "SCHEDULED" | "ESTIMATED" | "UNKNOWN";
 export type ApiDataSource =
   | "TMAP"
   | "SEOUL_OPEN_DATA"
+  | "WALKWAY_OPEN_DATA"
   | "SYNTHETIC_FIXTURE"
   | "TEAM_ENGINE"
   | "UNKNOWN";
@@ -49,6 +50,8 @@ export interface ApiWalkingSpeedProfile {
   walkingSpeedSource: string;
   walkingSpeedSampleCount: number;
   updatedAt: string;
+  baseSpeedMps?: number;
+  maxSpeedMps?: number;
 }
 
 export interface ApiUserProfile {
@@ -94,11 +97,25 @@ export interface ApiWalkStep {
   geometry: ApiGeoJsonLineString;
 }
 
+export type ApiSurfaceType =
+  | "ASPHALT"
+  | "CONCRETE"
+  | "BLOCK"
+  | "STONE"
+  | "BRICK"
+  | "UNPAVED"
+  | "UNKNOWN";
+
 export interface ApiWalkLeg extends ApiBaseLeg {
   mode: "WALK";
   steps: ApiWalkStep[];
   maxSlopePercent?: number | null;
   hasStairs: boolean;
+  surfaceType?: ApiSurfaceType | null;
+  widthM?: number | null;
+  curbRampPresent?: boolean | null;
+  tactilePavingPresent?: boolean | null;
+  passable?: boolean;
   dataConfidence: ApiDataConfidence;
   dataSource: ApiDataSource;
 }

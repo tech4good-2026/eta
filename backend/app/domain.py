@@ -9,6 +9,7 @@ from app.models import (
     LowFloorStatus,
     PlaceInput,
     RouteMode,
+    SurfaceType,
     TimeSource,
 )
 
@@ -59,6 +60,11 @@ class ProviderRoute:
 class WalkAccessibility:
     has_stairs: bool | None = None
     max_slope_percent: float | None = None
+    surface_type: SurfaceType | None = None
+    width_m: float | None = None
+    curb_ramp_present: bool | None = None
+    tactile_paving_present: bool | None = None
+    passable: bool = True
     confidence: DataConfidence = DataConfidence.UNKNOWN
     source: DataSource = DataSource.UNKNOWN
 

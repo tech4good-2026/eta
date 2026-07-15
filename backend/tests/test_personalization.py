@@ -67,7 +67,7 @@ def test_recalculates_walk_time_from_profile_speed() -> None:
         walk={
             "walk-leg-1": WalkAccessibility(
                 has_stairs=False,
-                max_slope_percent=4.0,
+                max_slope_percent=2.0,
                 confidence=DataConfidence.ESTIMATED,
             )
         }
@@ -423,3 +423,98 @@ def test_sorts_accessible_before_caution_before_unavailable() -> None:
         "UNAVAILABLE",
     ]
     assert [route.rank for route in routes] == [1, 2, 3]
+
+
+def _walk_only_candidate(distance_m: int = 800, duration_sec: int = 600) -> ProviderRoute:
+    origin = place("A", 37.50, 127.00)
+    destination = place("B", 37.51, 127.01)
+    return ProviderRoute(
+        provider_route_id="walk-env",
+        mode=RouteMode.WALK,
+        title="도보 경로",
+        standard_duration_sec=duration_sec,
+        total_distance_m=distance_m,
+        walk_distance_m=distance_m,
+        transfer_count=0,
+        fare_krw=0,
+        legs=[
+            ProviderLeg(
+                provider_leg_id="walk-env-1",
+                mode=LegMode.WALK,
+                start=origin,
+                end=destination,
+                distance_m=distance_m,
+                duration_sec=duration_sec,
+                geometry=line(origin, destination),
+            )
+        ],
+    )
+
+
+def _walk_context(**kwargs) -> AccessibilityContext:
+    return AccessibilityContext(
+        walk={"walk-env-1": WalkAccessibility(confidence=DataConfidence.ESTIMATED, **kwargs)}
+    )
+
+
+def test_rough_surface_adds_walk_time_for_wheelchair_user() -> None:
+    from app.models import SurfaceType
+
+    [route] = BaselinePersonalizationEngine().personalize_routes(
+        [_walk_only_candidate()],
+        demo_profile(),
+        _walk_context(surface_type=SurfaceType.STONE),
+        NOW,
+    )
+
+    # base ceil(800/0.8)=1000, 바퀴형 거친 노면 패널티 0.30 → 1300
+    assert route.legs[0].personalized_duration_sec == 1300
+    assert any(warning.code == "ROUGH_SURFACE" for warning in route.warnings)
+
+
+def test_missing_curb_ramp_heavily_penalizes_wheelchair_user() -> None:
+    [route] = BaselinePersonalizationEngine().personalize_routes(
+        [_walk_only_candidate()],
+        demo_profile(),
+        _walk_context(curb_ramp_present=False),
+        NOW,
+    )
+
+    # 턱낮춤 미비 패널티 1.50 → ceil(1000*2.5)=2500
+    assert route.legs[0].personalized_duration_sec == 2500
+    assert any(warning.code == "MISSING_CURB_RAMP" for warning in route.warnings)
+    assert route.accessibility_status == "CAUTION"
+
+
+def test_impassable_walkway_makes_route_unavailable() -> None:
+    [route] = BaselinePersonalizationEngine().personalize_routes(
+        [_walk_only_candidate()],
+        demo_profile(),
+        _walk_context(passable=False),
+        NOW,
+    )
+
+    assert route.accessibility_status == "UNAVAILABLE"
+    assert any(
+        reason.code == "WALKWAY_BLOCKED" for reason in route.unavailable_reasons
+    )
+
+
+def test_slope_penalty_is_larger_for_wheeled_aids() -> None:
+    engine = BaselinePersonalizationEngine()
+    wheeled_profile = demo_profile()
+    unaided_profile = demo_profile().model_copy(
+        update={"mobility_aids": []}, deep=True
+    )
+
+    [wheeled] = engine.personalize_routes(
+        [_walk_only_candidate()], wheeled_profile, _walk_context(max_slope_percent=5.0), NOW
+    )
+    [unaided] = engine.personalize_routes(
+        [_walk_only_candidate()], unaided_profile, _walk_context(max_slope_percent=5.0), NOW
+    )
+
+    assert (
+        wheeled.legs[0].personalized_duration_sec
+        > unaided.legs[0].personalized_duration_sec
+    )

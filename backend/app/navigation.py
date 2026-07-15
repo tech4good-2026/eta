@@ -1,7 +1,8 @@
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from math import asin, cos, radians, sin, sqrt
+from statistics import median
 from uuid import uuid4
 
 from app.errors import ApiError
@@ -23,6 +24,7 @@ from app.models import (
     RouteSearchRequest,
     UserProfile,
 )
+from app.profile import DemoProfileStore
 from app.providers.seoul import SeoulDataClient
 from app.services import RouteService
 from app.storage import MemoryTTLStore, StoreState
@@ -35,6 +37,8 @@ class NavigationState:
     last_processed_at: datetime | None = None
     off_route_sample_count: int = 0
     missed_transit_sample_count: int = 0
+    walk_speed_samples: list[float] = field(default_factory=list)
+    last_walk_sample: tuple[Coordinate, datetime, float] | None = None
 
 
 class NavigationService:
@@ -44,6 +48,14 @@ class NavigationService:
     missed_departure_grace_sec = 60
     consecutive_samples_required = 2
 
+    # 안내 중 도보 속도 표본 수집 조건.
+    walk_speed_min_mps = 0.15
+    walk_speed_max_mps = 2.5
+    walk_speed_accuracy_limit_m = 30.0
+    walk_speed_min_interval_sec = 2.0
+    walk_speed_max_interval_sec = 120.0
+    min_walk_speed_samples = 3
+
     def __init__(
         self,
         route_service: RouteService,
@@ -51,12 +63,14 @@ class NavigationService:
         ttl_sec: int = 7200,
         clock: Callable[[], datetime] | None = None,
         seoul: SeoulDataClient | None = None,
+        profile_store: DemoProfileStore | None = None,
     ) -> None:
         self.route_service = route_service
         self.store = store
         self.ttl_sec = ttl_sec
         self.clock = clock or (lambda: datetime.now().astimezone())
         self.seoul = seoul
+        self.profile_store = profile_store
 
     def start(self, route_id: str) -> NavigationSession:
         stored = self.route_service.get_stored_route(route_id)
@@ -87,6 +101,7 @@ class NavigationService:
                 return self._as_update(state.session)
 
         state.last_processed_at = sample.recorded_at
+        self._collect_walk_speed(state, sample)
         transit_leg = self._next_transit_leg(state.session.route.legs)
         missed = False
         if transit_leg is not None and transit_leg.departure_at is not None:
@@ -200,6 +215,7 @@ class NavigationService:
         state.last_processed_at = None
         state.off_route_sample_count = 0
         state.missed_transit_sample_count = 0
+        state.last_walk_sample = None
         self.store.put(session_id, state, self.ttl_sec)
         return state.session
 
@@ -216,6 +232,15 @@ class NavigationService:
                 "SESSION_ALREADY_COMPLETED",
                 "이미 완료된 안내 세션입니다.",
             )
+        walking_speed = profile.walking_speed
+        walking_speed_updated = False
+        learned = self._learn_from_samples(state.walk_speed_samples)
+        if learned is not None and self.profile_store is not None:
+            base_speed, max_speed, sample_count = learned
+            walking_speed = self.profile_store.learn_walking_speed(
+                base_speed, max_speed, sample_count
+            ).walking_speed
+            walking_speed_updated = True
         state.session = state.session.model_copy(
             update={
                 "status": NavigationStatus.COMPLETED,
@@ -228,8 +253,8 @@ class NavigationService:
             session_id=session_id,
             route_revision=state.session.route_revision,
             completed_at=request.completed_at,
-            walking_speed_updated=False,
-            walking_speed=profile.walking_speed,
+            walking_speed_updated=walking_speed_updated,
+            walking_speed=walking_speed,
         )
 
     def debug_state(self, session_id: str) -> NavigationState:
@@ -273,6 +298,68 @@ class NavigationService:
             distance_to_action_m=leg.distance_m,
             expected_at=expected_at,
         )
+
+    def _collect_walk_speed(
+        self, state: NavigationState, sample: LocationSample
+    ) -> None:
+        """연속한 GPS 표본으로 도보 구간의 실제 이동속도를 계산해 누적한다.
+
+        보행 구간(가장 가까운 leg가 WALK)일 때, 표본 정확도·간격·속도가 타당한
+        경우만 수집한다. 차량 이동(속도 상한 초과)이나 정지는 자연히 걸러진다.
+        """
+        previous = state.last_walk_sample
+        state.last_walk_sample = (
+            sample.coordinate,
+            sample.recorded_at,
+            sample.accuracy_m,
+        )
+        if previous is None:
+            return
+        prev_coordinate, prev_time, prev_accuracy = previous
+        elapsed = (sample.recorded_at - prev_time).total_seconds()
+        if not (
+            self.walk_speed_min_interval_sec
+            <= elapsed
+            <= self.walk_speed_max_interval_sec
+        ):
+            return
+        if (
+            sample.accuracy_m > self.walk_speed_accuracy_limit_m
+            or prev_accuracy > self.walk_speed_accuracy_limit_m
+        ):
+            return
+        if not self._on_walk_leg(sample.coordinate, state.session.route.legs):
+            return
+        speed = self._distance_m(prev_coordinate, sample.coordinate) / elapsed
+        if self.walk_speed_min_mps <= speed <= self.walk_speed_max_mps:
+            state.walk_speed_samples.append(speed)
+
+    def _learn_from_samples(
+        self, samples: list[float]
+    ) -> tuple[float, float, int] | None:
+        """표본에서 기본속도(중앙값)와 최고속도를 산출한다."""
+        if len(samples) < self.min_walk_speed_samples:
+            return None
+        base_speed = round(min(max(median(samples), 0.1), 3.0), 2)
+        max_speed = round(min(max(max(samples), base_speed), 3.0), 2)
+        return base_speed, max_speed, len(samples)
+
+    def _on_walk_leg(self, coordinate: Coordinate, legs: list[RouteLeg]) -> bool:
+        leg = self._nearest_leg(coordinate, legs)
+        return leg is not None and leg.mode == LegMode.WALK
+
+    @classmethod
+    def _nearest_leg(cls, coordinate: Coordinate, legs: list[RouteLeg]):
+        best_leg = None
+        best_distance = float("inf")
+        for leg in legs:
+            points = leg.geometry.coordinates
+            for start, end in zip(points, points[1:], strict=False):
+                distance = cls._point_to_segment_m(coordinate, start, end)
+                if distance < best_distance:
+                    best_distance = distance
+                    best_leg = leg
+        return best_leg
 
     @staticmethod
     def _next_transit_leg(legs: list[RouteLeg]):

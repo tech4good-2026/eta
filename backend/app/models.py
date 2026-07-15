@@ -49,6 +49,8 @@ class WalkingSpeedProfile(ApiModel):
     walking_speed_source: str
     walking_speed_sample_count: int = Field(ge=0)
     updated_at: datetime
+    base_speed_mps: float | None = Field(default=None, gt=0, le=3)
+    max_speed_mps: float | None = Field(default=None, gt=0, le=3)
 
 
 class UserProfile(ApiModel):
@@ -110,9 +112,20 @@ class FacilityStatus(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+class SurfaceType(StrEnum):
+    ASPHALT = "ASPHALT"
+    CONCRETE = "CONCRETE"
+    BLOCK = "BLOCK"
+    STONE = "STONE"
+    BRICK = "BRICK"
+    UNPAVED = "UNPAVED"
+    UNKNOWN = "UNKNOWN"
+
+
 class DataSource(StrEnum):
     TMAP = "TMAP"
     SEOUL_OPEN_DATA = "SEOUL_OPEN_DATA"
+    WALKWAY_OPEN_DATA = "WALKWAY_OPEN_DATA"
     SYNTHETIC_FIXTURE = "SYNTHETIC_FIXTURE"
     TEAM_ENGINE = "TEAM_ENGINE"
     UNKNOWN = "UNKNOWN"
@@ -175,6 +188,11 @@ class WalkLeg(BaseLeg):
     steps: list[WalkStep]
     max_slope_percent: float | None = Field(default=None, ge=0)
     has_stairs: bool
+    surface_type: SurfaceType | None = None
+    width_m: float | None = Field(default=None, ge=0)
+    curb_ramp_present: bool | None = None
+    tactile_paving_present: bool | None = None
+    passable: bool = True
     data_confidence: DataConfidence
     data_source: DataSource = DataSource.UNKNOWN
 

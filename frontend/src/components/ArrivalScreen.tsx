@@ -16,6 +16,8 @@ interface ArrivalScreenProps {
 export function ArrivalScreen({ route, previousSpeed, completion, onHome, onLogout }: ArrivalScreenProps) {
   const speed = completion.walkingSpeed.walkingSpeedMps;
   const samples = completion.walkingSpeed.walkingSpeedSampleCount;
+  const baseSpeed = completion.walkingSpeed.baseSpeedMps;
+  const maxSpeed = completion.walkingSpeed.maxSpeedMps;
 
   return (
     <div className="flex-1 flex flex-col justify-between px-6 py-6 overflow-y-auto custom-scrollbar bg-slate-50" id="view-arrival-screen">
@@ -74,6 +76,19 @@ export function ArrivalScreen({ route, previousSpeed, completion, onHome, onLogo
           <PaceBar speedFactor={speed / 1.3} />
           <span className="text-[9.5px] text-slate-400">표본: {samples}회</span>
         </div>
+
+        {baseSpeed != null && maxSpeed != null && (
+          <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100 grid grid-cols-2 gap-2 text-center text-slate-700 font-bold">
+            <div className="border-r border-blue-100 py-0.5">
+              <span className="block text-[9.5px] text-slate-400">센서 기본속도</span>
+              <span className="text-[13px] font-mono text-slate-800">{baseSpeed} m/s</span>
+            </div>
+            <div className="py-0.5">
+              <span className="block text-[9.5px] text-slate-400">센서 최고속도</span>
+              <span className="text-[13px] font-mono text-blue-600">{maxSpeed} m/s</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4 pt-4">

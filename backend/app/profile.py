@@ -62,3 +62,25 @@ class DemoProfileStore:
             deep=True,
         )
         return self.get()
+
+    def learn_walking_speed(
+        self,
+        base_speed_mps: float,
+        max_speed_mps: float,
+        sample_count: int,
+    ) -> UserProfile:
+        """센서(안내 중 GPS)로 측정한 기본·최고 보행속도를 프로필에 반영한다."""
+        walking_speed = self._profile.walking_speed.model_copy(
+            update={
+                "walking_speed_mps": base_speed_mps,
+                "walking_speed_source": "LEARNED",
+                "walking_speed_sample_count": sample_count,
+                "updated_at": datetime.now(SEOUL),
+                "base_speed_mps": base_speed_mps,
+                "max_speed_mps": max_speed_mps,
+            }
+        )
+        self._profile = self._profile.model_copy(
+            update={"walking_speed": walking_speed}, deep=True
+        )
+        return self.get()

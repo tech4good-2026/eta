@@ -14,11 +14,13 @@ from app.models import (
     GeoJsonLineString,
     LegMode,
     LowFloorStatus,
+    MobilityAid,
     Notice,
     Route,
     RouteSummary,
     StationFacility,
     SubwayLeg,
+    SurfaceType,
     TaxiLeg,
     TimeSource,
     UserProfile,
@@ -54,6 +56,29 @@ class BaselinePersonalizationEngine:
 
     steep_slope_threshold_percent = 6.0
     accessible_boarding_buffer_sec = 60
+
+    # 도보 환경 패널티 계수. 바퀴형 보조기구(휠체어·유모차)는 계수를 크게 둔다.
+    wheeled_aids = frozenset(
+        {
+            MobilityAid.MANUAL_WHEELCHAIR,
+            MobilityAid.POWER_WHEELCHAIR,
+            MobilityAid.STROLLER,
+        }
+    )
+    rough_surfaces = frozenset(
+        {SurfaceType.STONE, SurfaceType.BRICK, SurfaceType.UNPAVED}
+    )
+    comfortable_slope_percent = 3.0
+    slope_penalty_per_percent = 0.04
+    wheeled_slope_penalty_per_percent = 0.10
+    rough_surface_penalty = 0.10
+    wheeled_rough_surface_penalty = 0.30
+    min_comfortable_width_m = 1.2
+    narrow_width_penalty = 0.10
+    wheeled_narrow_width_penalty = 0.35
+    missing_curb_ramp_penalty = 0.20
+    wheeled_missing_curb_ramp_penalty = 1.50
+    max_walk_penalty = 3.0
 
     def personalize_routes(
         self,
@@ -181,10 +206,13 @@ class BaselinePersonalizationEngine:
             elif slope > self.steep_slope_threshold_percent:
                 unavailable.append(self._notice("STEEP_SLOPE_MUST_BE_AVOIDED", "급경사가 포함된 경로입니다.", leg, critical=True))
 
-        personalized = max(
-            leg.duration_sec,
-            ceil(leg.distance_m / profile.walking_speed.walking_speed_mps),
-        )
+        if value is not None and not value.passable:
+            unavailable.append(self._notice("WALKWAY_BLOCKED", "현재 통행이 제한된 보도 구간입니다.", leg, critical=True))
+
+        base_sec = ceil(leg.distance_m / profile.walking_speed.walking_speed_mps)
+        penalty, penalty_warnings = self._walk_penalty(value, profile, leg)
+        warnings.extend(penalty_warnings)
+        personalized = max(leg.duration_sec, ceil(base_sec * (1 + penalty)))
         steps = [
             WalkStep(
                 instruction=step.instruction,
@@ -214,6 +242,11 @@ class BaselinePersonalizationEngine:
                 steps=steps,
                 max_slope_percent=slope,
                 has_stairs=has_stairs,
+                surface_type=value.surface_type if value else None,
+                width_m=value.width_m if value else None,
+                curb_ramp_present=value.curb_ramp_present if value else None,
+                tactile_paving_present=value.tactile_paving_present if value else None,
+                passable=value.passable if value else True,
                 data_confidence=confidence,
                 data_source=value.source if value else DataSource.UNKNOWN,
             ),
@@ -221,6 +254,56 @@ class BaselinePersonalizationEngine:
             unavailable,
             confidence,
         )
+
+    def _walk_penalty(self, value, profile: UserProfile, leg: ProviderLeg):
+        """도로 난이도(경사·노면·폭·턱낮춤)를 보행 시간 배수로 환산한다.
+
+        결과 배수는 1 이상이며(계약상 개인화 시간은 기본값보다 짧아질 수 없다),
+        바퀴형 보조기구 사용자는 동일 조건에서 더 큰 패널티를 받는다.
+        """
+        warnings: list[Notice] = []
+        if value is None:
+            return 0.0, warnings
+        wheeled = bool(set(profile.mobility_aids) & self.wheeled_aids)
+        penalty = 0.0
+
+        slope = value.max_slope_percent
+        if slope is not None and slope > self.comfortable_slope_percent:
+            coeff = (
+                self.wheeled_slope_penalty_per_percent
+                if wheeled
+                else self.slope_penalty_per_percent
+            )
+            penalty += (slope - self.comfortable_slope_percent) * coeff
+            warnings.append(
+                self._info("STEEP_SLOPE_SLOWDOWN", f"경사 약 {slope:.0f}% 구간으로 이동 시간이 늘어납니다.", leg)
+            )
+        if value.surface_type in self.rough_surfaces:
+            penalty += (
+                self.wheeled_rough_surface_penalty
+                if wheeled
+                else self.rough_surface_penalty
+            )
+            warnings.append(
+                self._info("ROUGH_SURFACE", "노면이 고르지 않아 이동 시간이 늘어납니다.", leg)
+            )
+        if value.width_m is not None and value.width_m < self.min_comfortable_width_m:
+            penalty += (
+                self.wheeled_narrow_width_penalty if wheeled else self.narrow_width_penalty
+            )
+            if wheeled:
+                warnings.append(
+                    self._info("NARROW_WALKWAY", "보도 폭이 좁아 통행이 더딜 수 있습니다.", leg)
+                )
+        if value.curb_ramp_present is False:
+            if wheeled:
+                penalty += self.wheeled_missing_curb_ramp_penalty
+                warnings.append(
+                    self._notice("MISSING_CURB_RAMP", "턱낮춤이 없는 횡단 구간으로 이동이 크게 지연됩니다.", leg)
+                )
+            else:
+                penalty += self.missing_curb_ramp_penalty
+        return min(penalty, self.max_walk_penalty), warnings
 
     def _bus_leg(
         self,
@@ -396,6 +479,15 @@ class BaselinePersonalizationEngine:
         return Notice(
             code=code,
             severity="CRITICAL" if critical else "WARNING",
+            message=message,
+            leg_id=leg.provider_leg_id,
+        )
+
+    @staticmethod
+    def _info(code: str, message: str, leg: ProviderLeg) -> Notice:
+        return Notice(
+            code=code,
+            severity="INFO",
             message=message,
             leg_id=leg.provider_leg_id,
         )

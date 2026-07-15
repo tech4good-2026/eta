@@ -514,6 +514,16 @@ components:
         updatedAt:
           type: string
           format: date-time
+        baseSpeedMps:
+          type: number
+          description: 센서로 측정한 평상시 보행속도.
+          exclusiveMinimum: 0
+          maximum: 3
+        maxSpeedMps:
+          type: number
+          description: 센서로 측정한 최고 보행속도.
+          exclusiveMinimum: 0
+          maximum: 3
     UpdateProfileRequest:
       type: object
       additionalProperties: false
@@ -659,7 +669,11 @@ components:
     DataSource:
       type: string
       description: 접근성 정보의 실제 출처. 합성 데이터는 반드시 SYNTHETIC_FIXTURE로 표시합니다.
-      enum: [TMAP, SEOUL_OPEN_DATA, SYNTHETIC_FIXTURE, TEAM_ENGINE, UNKNOWN]
+      enum: [TMAP, SEOUL_OPEN_DATA, WALKWAY_OPEN_DATA, SYNTHETIC_FIXTURE, TEAM_ENGINE, UNKNOWN]
+    SurfaceType:
+      type: string
+      description: 보도 포장재 종류. 보도통계자료(OA-22240) 기반.
+      enum: [ASPHALT, CONCRETE, BLOCK, STONE, BRICK, UNPAVED, UNKNOWN]
     TimeSource:
       type: string
       enum: [REALTIME, SCHEDULED, ESTIMATED, UNKNOWN]
@@ -803,6 +817,21 @@ components:
               minimum: 0
             hasStairs:
               type: boolean
+            surfaceType:
+              $ref: '#/components/schemas/SurfaceType'
+            widthM:
+              type: number
+              minimum: 0
+              description: 보도 폭(m). 보도통계자료 기반.
+            curbRampPresent:
+              type: boolean
+              description: 횡단 구간 보도턱낮춤 여부. 전국 횡단보도 표준데이터 기반.
+            tactilePavingPresent:
+              type: boolean
+              description: 점자블록 유무. 전국 횡단보도 표준데이터 기반.
+            passable:
+              type: boolean
+              description: 현재 통행 가능 여부(일시적 장애물 반영).
             dataConfidence:
               $ref: '#/components/schemas/DataConfidence'
             dataSource:

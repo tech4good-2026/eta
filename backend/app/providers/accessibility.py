@@ -20,6 +20,7 @@ from app.models import (
 )
 from app.providers.seoul import SeoulDataClient
 from app.providers.seoul_bus import SeoulBusClient
+from app.providers.walkway import SyntheticWalkwaySource, WalkwaySource
 
 
 class HybridAccessibilityProvider:
@@ -31,11 +32,13 @@ class HybridAccessibilityProvider:
         bus: SeoulBusClient | None = None,
         clock: Callable[[], datetime] | None = None,
         use_synthetic_bus: bool = True,
+        walkway: WalkwaySource | None = None,
     ) -> None:
         self.seoul = seoul
         self.bus = bus
         self.clock = clock or (lambda: datetime.now().astimezone())
         self.use_synthetic_bus = use_synthetic_bus
+        self.walkway = walkway or SyntheticWalkwaySource()
 
     async def get_context(self, routes: list[ProviderRoute]) -> AccessibilityContext:
         walk = {}
@@ -44,11 +47,19 @@ class HybridAccessibilityProvider:
         for route in routes:
             for leg in route.legs:
                 if leg.mode == LegMode.WALK:
+                    segment = self.walkway.segment_for(
+                        leg.provider_leg_id, leg.start, leg.end
+                    )
                     walk[leg.provider_leg_id] = WalkAccessibility(
-                        has_stairs=False,
-                        max_slope_percent=4.0,
-                        confidence=DataConfidence.ESTIMATED,
-                        source=DataSource.SYNTHETIC_FIXTURE,
+                        has_stairs=bool(segment.has_stairs),
+                        max_slope_percent=segment.max_slope_percent,
+                        surface_type=segment.surface_type,
+                        width_m=segment.width_m,
+                        curb_ramp_present=segment.curb_ramp_present,
+                        tactile_paving_present=segment.tactile_paving_present,
+                        passable=segment.passable,
+                        confidence=segment.confidence,
+                        source=segment.source,
                     )
                 elif leg.mode == LegMode.BUS:
                     bus[leg.provider_leg_id] = await self._bus_accessibility(

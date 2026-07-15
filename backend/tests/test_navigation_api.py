@@ -186,6 +186,59 @@ def test_current_station_takes_precedence_over_gps_when_rerouting() -> None:
     assert route_start["coordinate"] == {"latitude": 37.564, "longitude": 126.9768}
 
 
+def test_walking_speed_is_learned_from_walk_samples_on_completion() -> None:
+    with make_client() as client:
+        route = search_route(client, "WALK")
+        started = start_navigation(client, route["routeId"])
+        session_id = started["sessionId"]
+        base_time = datetime.fromisoformat(started["updatedAt"])
+        # 출발지 인근 보행 구간을 따라 약 1m/s로 이동하는 표본을 6초 간격으로 전송.
+        latitude = 37.5547
+        longitude = 126.9707
+        for index in range(1, 7):
+            sample_at = base_time + timedelta(seconds=6 * index)
+            response = client.post(
+                f"/api/v1/navigation/sessions/{session_id}/position",
+                headers=AUTH,
+                json=position_payload(latitude, longitude + 0.00007 * index, sample_at),
+            )
+            assert response.status_code == 200
+
+        completed = client.post(
+            f"/api/v1/navigation/sessions/{session_id}/complete",
+            headers=AUTH,
+            json={
+                "reason": "ARRIVED",
+                "completedAt": (base_time + timedelta(seconds=120)).isoformat(),
+            },
+        )
+
+    assert completed.status_code == 200
+    body = completed.json()
+    assert body["walkingSpeedUpdated"] is True
+    speed = body["walkingSpeed"]
+    assert speed["walkingSpeedSource"] == "LEARNED"
+    assert speed["walkingSpeedSampleCount"] >= 3
+    assert 0.15 <= speed["baseSpeedMps"] <= 2.5
+    assert speed["maxSpeedMps"] >= speed["baseSpeedMps"]
+    assert speed["walkingSpeedMps"] == speed["baseSpeedMps"]
+
+
+def test_completion_without_walk_samples_keeps_existing_speed() -> None:
+    with make_client() as client:
+        route = search_route(client, "WALK")
+        started = start_navigation(client, route["routeId"])
+        session_id = started["sessionId"]
+        completed = client.post(
+            f"/api/v1/navigation/sessions/{session_id}/complete",
+            headers=AUTH,
+            json={"reason": "ARRIVED", "completedAt": started["updatedAt"]},
+        )
+
+    assert completed.status_code == 200
+    assert completed.json()["walkingSpeedUpdated"] is False
+
+
 def test_unknown_navigation_session_returns_standard_error() -> None:
     with make_client() as client:
         response = client.post(

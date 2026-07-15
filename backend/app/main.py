@@ -109,16 +109,18 @@ def build_container(settings: Settings) -> ApplicationContainer:
         store=MemoryTTLStore[StoredRoute](),
         ttl_sec=settings.route_ttl_sec,
     )
+    profile_store = DemoProfileStore(demo_profile())
     navigation_service = NavigationService(
         route_service=service,
         store=MemoryTTLStore[NavigationState](),
         ttl_sec=settings.navigation_ttl_sec,
         seoul=seoul,
+        profile_store=profile_store,
     )
     return ApplicationContainer(
         route_service=service,
         navigation_service=navigation_service,
-        profile_store=DemoProfileStore(demo_profile()),
+        profile_store=profile_store,
         http_client=client,
     )
 
