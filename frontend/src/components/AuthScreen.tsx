@@ -49,7 +49,7 @@ export function AuthScreen({ onAuthSuccess, showToast }: AuthScreenProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col justify-between px-6 py-6 overflow-y-auto custom-scrollbar" id="view-login-screen">
+    <div className="flex-1 min-h-0 flex flex-col justify-between px-6 py-6 overflow-y-auto custom-scrollbar" id="view-login-screen">
       <div className="flex-1 flex flex-col justify-center">
         {/* Logo */}
         <div className="w-[58px] h-[58px] rounded-[18px] bg-blue-600 flex items-center justify-center mb-5 shadow-sm">

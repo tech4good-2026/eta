@@ -211,7 +211,7 @@ export function NavigationScreen({
     .filter((mode, index, all) => all.indexOf(mode) === index);
 
   return (
-    <div className="flex-1 flex flex-col" id="view-navigation-screen">
+    <div className="flex-1 min-h-0 flex flex-col" id="view-navigation-screen">
       <div className="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
@@ -270,7 +270,7 @@ export function NavigationScreen({
         </button>
       </div>
 
-      <div className="flex-1 bg-white border-t border-slate-200 shadow flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 bg-white border-t border-slate-200 shadow flex flex-col overflow-hidden">
         <div className="bg-blue-600 text-white p-4.5 shrink-0 relative">
           <div className="flex justify-between items-start mb-1.5">
             <div>

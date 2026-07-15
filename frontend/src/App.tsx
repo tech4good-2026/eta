@@ -435,7 +435,7 @@ export default function App() {
 
         {/* SCREEN: MAIN MAP VIEW */}
         {screen === "main" && (
-          <div className="flex-1 flex flex-col" id="view-main-screen">
+          <div className="flex-1 min-h-0 flex flex-col" id="view-main-screen">
             {/* Header Profiling Bar */}
             <div className="bg-white border-b border-slate-200 px-5 py-4 shrink-0 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -606,7 +606,7 @@ export default function App() {
 
         {/* SCREEN: SEARCH VIEW (F-PLACE-01) */}
         {screen === "search" && (
-          <div className="flex-1 flex flex-col bg-white" id="view-search-screen">
+          <div className="flex-1 min-h-0 flex flex-col bg-white" id="view-search-screen">
             {/* Search Top Header */}
             <div className="p-4.5 border-b border-slate-200 shrink-0 flex items-center gap-3">
               <button
@@ -682,7 +682,7 @@ export default function App() {
 
         {/* SCREEN: PLACE DETAIL (F-PLACE-02) */}
         {screen === "place" && searchTarget && (
-          <div className="flex-1 flex flex-col" id="view-place-screen">
+          <div className="flex-1 min-h-0 flex flex-col" id="view-place-screen">
             <div className="bg-white border-b border-slate-200 px-5 py-4 shrink-0 flex items-center gap-3">
               <button
                 onClick={() => setScreen(searchQuery.trim().length >= 2 ? "search" : "main")}
@@ -758,7 +758,7 @@ export default function App() {
 
         {/* SCREEN: ROUTE COMPARE SEARCH (F-ROUTE-01 / 02 / 03 / 04 / 06) */}
         {screen === "route-search" && origin && destination && (
-          <div className="flex-1 flex flex-col" id="view-route-search-screen">
+          <div className="flex-1 min-h-0 flex flex-col" id="view-route-search-screen">
             {/* Header comparison controls */}
             <div className="bg-white border-b border-slate-200 p-4 shrink-0 shadow-sm space-y-3">
               <div className="flex items-center gap-3">
@@ -935,7 +935,7 @@ export default function App() {
 
         {/* SCREEN: ROUTE LEG DETAILS (F-ROUTE-05) */}
         {screen === "route-detail" && selectedRoute && origin && destination && (
-          <div className="flex-1 flex flex-col" id="view-route-detail-screen">
+          <div className="flex-1 min-h-0 flex flex-col" id="view-route-detail-screen">
             <div className="bg-white border-b border-slate-200 px-5 py-4 shrink-0 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
                 <button

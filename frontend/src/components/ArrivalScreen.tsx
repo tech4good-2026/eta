@@ -1,9 +1,8 @@
 import React from "react";
-import { Check, Home, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
+import { Check, Home, LogOut, RefreshCw } from "lucide-react";
 
 import type { ApiNavigationCompletion } from "../api/types";
 import type { RouteInfo } from "../types";
-import { PaceBar } from "./PaceBar";
 
 interface ArrivalScreenProps {
   route: RouteInfo;
@@ -21,7 +20,7 @@ export function ArrivalScreen({ route, previousSpeed, completion, savedReportCou
   const maxSpeed = completion.walkingSpeed.maxSpeedMps;
 
   return (
-    <div className="flex-1 flex flex-col justify-between px-6 py-6 overflow-y-auto custom-scrollbar bg-slate-50" id="view-arrival-screen">
+    <div className="flex-1 min-h-0 flex flex-col justify-between px-6 py-6 overflow-y-auto custom-scrollbar bg-slate-50" id="view-arrival-screen">
       <div className="text-center pt-3">
         <div className="w-[66px] h-[66px] rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4.5 border border-emerald-100 shadow-sm animate-pulse">
           <Check className="w-[32px] h-[32px]" />
@@ -55,10 +54,9 @@ export function ArrivalScreen({ route, previousSpeed, completion, savedReportCou
           ETA 걷기속도 정밀보정 리포트
         </h4>
         <p className="text-[11.5px] text-slate-500 leading-normal">
-          안내 중 수집된 원본 좌표는 DB에 저장되지 않고 모두 폐기되었습니다.
           {completion.walkingSpeedUpdated
-            ? " 유효한 보행 속도 표본만 프로필에 반영했습니다."
-            : " 이번 안내에는 유효한 속도 표본이 없어 기존 속도를 유지했습니다."}
+            ? "유효한 보행 속도 표본만 프로필에 반영했습니다."
+            : "이번 안내에는 유효한 속도 표본이 없어 기존 속도를 유지했습니다."}
         </p>
 
         <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 grid grid-cols-2 gap-2 text-center text-slate-700 font-bold">
@@ -72,11 +70,7 @@ export function ArrivalScreen({ route, previousSpeed, completion, savedReportCou
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 pt-1 text-[11px] font-bold text-slate-500">
-          <span>맞춤 보도 박자</span>
-          <PaceBar speedFactor={speed / 1.3} />
-          <span className="text-[9.5px] text-slate-400">표본: {samples}회</span>
-        </div>
+        <p className="text-[9.5px] text-slate-400 font-bold">표본: {samples}회</p>
 
         {savedReportCount != null && savedReportCount > 0 && (
           <p className="text-[10.5px] font-bold text-emerald-600">
@@ -99,11 +93,6 @@ export function ArrivalScreen({ route, previousSpeed, completion, savedReportCou
       </div>
 
       <div className="space-y-4 pt-4">
-        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-2.5 text-[11px] text-blue-700 leading-normal">
-          <ShieldCheck className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-          <span><b>위치정보 삭제 완료:</b> 세션 종료와 동시에 임시 GPS 정보가 소멸되었습니다.</span>
-        </div>
-
         <div className="space-y-2">
           <button
             onClick={onHome}
