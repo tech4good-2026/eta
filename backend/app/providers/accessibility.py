@@ -20,7 +20,7 @@ from app.models import (
 )
 from app.providers.seoul import SeoulDataClient
 from app.providers.seoul_bus import SeoulBusClient
-from app.providers.walkway import SyntheticWalkwaySource, WalkwaySource
+from app.providers.walkway import UnknownWalkwaySource, WalkwaySource
 
 
 class HybridAccessibilityProvider:
@@ -38,7 +38,7 @@ class HybridAccessibilityProvider:
         self.bus = bus
         self.clock = clock or (lambda: datetime.now().astimezone())
         self.use_synthetic_bus = use_synthetic_bus
-        self.walkway = walkway or SyntheticWalkwaySource()
+        self.walkway = walkway or UnknownWalkwaySource()
 
     async def get_context(self, routes: list[ProviderRoute]) -> AccessibilityContext:
         walk = {}

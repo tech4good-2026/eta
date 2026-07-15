@@ -1,5 +1,5 @@
-from app.models import Coordinate, DataSource, PlaceInput
-from app.providers.walkway import SyntheticWalkwaySource
+from app.models import Coordinate, DataConfidence, DataSource, PlaceInput
+from app.providers.walkway import UnknownWalkwaySource
 
 
 def _place(latitude: float, longitude: float) -> PlaceInput:
@@ -8,31 +8,20 @@ def _place(latitude: float, longitude: float) -> PlaceInput:
     )
 
 
-def test_synthetic_walkway_is_deterministic_and_marked_synthetic() -> None:
-    source = SyntheticWalkwaySource()
+def test_unknown_walkway_source_does_not_invent_data() -> None:
+    source = UnknownWalkwaySource()
     start = _place(37.5, 127.0)
     end = _place(37.51, 127.01)
 
-    first = source.segment_for("leg-1", start, end)
-    second = source.segment_for("leg-1", start, end)
+    segment = source.segment_for("leg-1", start, end)
 
-    assert first == second
-    assert first.source == DataSource.SYNTHETIC_FIXTURE
-    assert first.has_stairs is False
-    assert first.passable is True
-    # 합성 경사는 급경사 하드 차단(6%) 아래에 머문다.
-    assert first.max_slope_percent is not None
-    assert 0 <= first.max_slope_percent < 6
-
-
-def test_synthetic_walkway_varies_by_segment() -> None:
-    source = SyntheticWalkwaySource()
-    start = _place(37.5, 127.0)
-    end = _place(37.51, 127.01)
-
-    surfaces = {
-        source.segment_for(f"leg-{index}", start, end).surface_type
-        for index in range(12)
-    }
-
-    assert len(surfaces) > 1
+    # 실데이터 미확보 상태에서는 값을 지어내지 않는다.
+    assert segment.max_slope_percent is None
+    assert segment.surface_type is None
+    assert segment.width_m is None
+    assert segment.curb_ramp_present is None
+    assert segment.tactile_paving_present is None
+    assert segment.has_stairs is None
+    assert segment.passable is True
+    assert segment.confidence == DataConfidence.UNKNOWN
+    assert segment.source == DataSource.UNKNOWN
