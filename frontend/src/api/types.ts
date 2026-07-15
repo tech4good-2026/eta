@@ -110,7 +110,7 @@ export interface ApiWalkLeg extends ApiBaseLeg {
   mode: "WALK";
   steps: ApiWalkStep[];
   maxSlopePercent?: number | null;
-  hasStairs: boolean;
+  hasStairs?: boolean | null;
   surfaceType?: ApiSurfaceType | null;
   widthM?: number | null;
   curbRampPresent?: boolean | null;

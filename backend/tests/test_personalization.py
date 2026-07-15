@@ -518,3 +518,14 @@ def test_slope_penalty_is_larger_for_wheeled_aids() -> None:
         wheeled.legs[0].personalized_duration_sec
         > unaided.legs[0].personalized_duration_sec
     )
+
+
+def test_unknown_stairs_are_not_reported_as_stair_free() -> None:
+    [route] = BaselinePersonalizationEngine().personalize_routes(
+        [_walk_only_candidate()],
+        demo_profile(),
+        _walk_context(),
+        NOW,
+    )
+
+    assert route.legs[0].has_stairs is None

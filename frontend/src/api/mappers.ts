@@ -107,7 +107,11 @@ function legToSegment(leg: ApiRouteLeg): RouteSegment {
   if (leg.mode === "WALK") {
     const instructions = leg.steps.map((step) => step.instruction).filter(Boolean);
     const tags = [
-      leg.hasStairs ? "계단 있음" : "계단 없음",
+      leg.hasStairs == null
+        ? "계단 정보 미확인"
+        : leg.hasStairs
+          ? "계단 있음"
+          : "계단 없음",
       leg.maxSlopePercent == null ? "경사 미확인" : `최대 경사 ${leg.maxSlopePercent}%`,
     ];
     return {
@@ -116,7 +120,14 @@ function legToSegment(leg: ApiRouteLeg): RouteSegment {
       title: `${leg.start.name} → ${leg.end.name} 도보`,
       desc: instructions.join(" · ") || `${leg.distanceM}m 안전 보행 구간`,
       tags,
-      facilityStatus: leg.hasStairs ? "UNAVAILABLE" : leg.maxSlopePercent != null && leg.maxSlopePercent > 5 ? "CAUTION" : "ACCESSIBLE",
+      facilityStatus:
+        leg.hasStairs == null
+          ? "UNKNOWN"
+          : leg.hasStairs
+            ? "UNAVAILABLE"
+            : leg.maxSlopePercent != null && leg.maxSlopePercent > 5
+              ? "CAUTION"
+              : "ACCESSIBLE",
     };
   }
   if (leg.mode === "BUS") {

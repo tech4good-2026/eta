@@ -190,7 +190,7 @@ class BaselinePersonalizationEngine:
     def _walk_leg(self, leg: ProviderLeg, profile: UserProfile, context: AccessibilityContext):
         value = context.walk.get(leg.provider_leg_id)
         confidence = value.confidence if value else DataConfidence.UNKNOWN
-        has_stairs = value.has_stairs if value and value.has_stairs is not None else False
+        has_stairs = value.has_stairs if value else None
         slope = value.max_slope_percent if value else None
         warnings: list[Notice] = []
         unavailable: list[Notice] = []

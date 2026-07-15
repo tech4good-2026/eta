@@ -51,11 +51,16 @@ def start_navigation(client: TestClient, route_id: str) -> dict:
     return response.json()
 
 
-def position_payload(latitude: float, longitude: float, recorded_at: datetime) -> dict:
+def position_payload(
+    latitude: float,
+    longitude: float,
+    recorded_at: datetime,
+    accuracy_m: float = 10,
+) -> dict:
     return {
         "coordinate": {"latitude": latitude, "longitude": longitude},
         "recordedAt": recorded_at.isoformat(),
-        "accuracyM": 10,
+        "accuracyM": accuracy_m,
     }
 
 
@@ -212,6 +217,7 @@ def test_walking_speed_is_learned_from_walk_samples_on_completion() -> None:
                 "completedAt": (base_time + timedelta(seconds=120)).isoformat(),
             },
         )
+        state = client.app.state.container.navigation_service.debug_state(session_id)
 
     assert completed.status_code == 200
     body = completed.json()
@@ -222,6 +228,144 @@ def test_walking_speed_is_learned_from_walk_samples_on_completion() -> None:
     assert 0.15 <= speed["baseSpeedMps"] <= 2.5
     assert speed["maxSpeedMps"] >= speed["baseSpeedMps"]
     assert speed["walkingSpeedMps"] == speed["baseSpeedMps"]
+    assert state.last_walk_sample is None
+    assert state.walk_speed_samples == []
+
+
+def test_off_route_positions_do_not_update_walking_speed() -> None:
+    with make_client() as client:
+        route = search_route(client, "WALK")
+        started = start_navigation(client, route["routeId"])
+        session_id = started["sessionId"]
+        base_time = datetime.fromisoformat(started["updatedAt"])
+
+        for index in range(1, 7):
+            response = client.post(
+                f"/api/v1/navigation/sessions/{session_id}/position",
+                headers=AUTH,
+                json=position_payload(
+                    37.70,
+                    127.30 + 0.00007 * index,
+                    base_time + timedelta(seconds=6 * index),
+                ),
+            )
+            assert response.status_code == 200
+
+        completed = client.post(
+            f"/api/v1/navigation/sessions/{session_id}/complete",
+            headers=AUTH,
+            json={
+                "reason": "ARRIVED",
+                "completedAt": (base_time + timedelta(seconds=120)).isoformat(),
+            },
+        )
+
+    assert completed.status_code == 200
+    assert completed.json()["walkingSpeedUpdated"] is False
+
+
+def test_transit_position_resets_previous_walk_sample() -> None:
+    with make_client() as client:
+        route = search_route(client, "TRANSIT")
+        started = start_navigation(client, route["routeId"])
+        session_id = started["sessionId"]
+        base_time = datetime.fromisoformat(started["updatedAt"])
+        first_walk = next(leg for leg in route["legs"] if leg["mode"] == "WALK")
+        subway = next(leg for leg in route["legs"] if leg["mode"] == "SUBWAY")
+        walk_point = first_walk["geometry"]["coordinates"][0]
+        subway_points = subway["geometry"]["coordinates"]
+        subway_point = subway_points[len(subway_points) // 2]
+
+        walk_response = client.post(
+            f"/api/v1/navigation/sessions/{session_id}/position",
+            headers=AUTH,
+            json=position_payload(
+                walk_point[1], walk_point[0], base_time + timedelta(seconds=6)
+            ),
+        )
+        transit_response = client.post(
+            f"/api/v1/navigation/sessions/{session_id}/position",
+            headers=AUTH,
+            json=position_payload(
+                subway_point[1], subway_point[0], base_time + timedelta(seconds=12)
+            ),
+        )
+        state = client.app.state.container.navigation_service.debug_state(session_id)
+
+    assert walk_response.status_code == 200
+    assert transit_response.status_code == 200
+    assert state.last_walk_sample is None
+
+
+def test_inaccurate_position_resets_previous_walk_sample() -> None:
+    with make_client() as client:
+        route = search_route(client, "WALK")
+        started = start_navigation(client, route["routeId"])
+        session_id = started["sessionId"]
+        base_time = datetime.fromisoformat(started["updatedAt"])
+
+        client.post(
+            f"/api/v1/navigation/sessions/{session_id}/position",
+            headers=AUTH,
+            json=position_payload(
+                37.5547, 126.9707, base_time + timedelta(seconds=6)
+            ),
+        )
+        inaccurate = client.post(
+            f"/api/v1/navigation/sessions/{session_id}/position",
+            headers=AUTH,
+            json=position_payload(
+                37.5547,
+                126.97077,
+                base_time + timedelta(seconds=12),
+                accuracy_m=40,
+            ),
+        )
+        state = client.app.state.container.navigation_service.debug_state(session_id)
+
+    assert inaccurate.status_code == 200
+    assert state.last_walk_sample is None
+    assert state.walk_speed_samples == []
+
+
+def test_implausible_speed_and_long_interval_are_not_learned() -> None:
+    with make_client() as client:
+        route = search_route(client, "WALK")
+        started = start_navigation(client, route["routeId"])
+        session_id = started["sessionId"]
+        base_time = datetime.fromisoformat(started["updatedAt"])
+        coordinates = route["legs"][0]["geometry"]["coordinates"]
+        start = coordinates[0]
+        end = coordinates[-1]
+        fast_point = [
+            start[0] + (end[0] - start[0]) * 0.01,
+            start[1] + (end[1] - start[1]) * 0.01,
+        ]
+
+        client.post(
+            f"/api/v1/navigation/sessions/{session_id}/position",
+            headers=AUTH,
+            json=position_payload(
+                start[1], start[0], base_time + timedelta(seconds=6)
+            ),
+        )
+        client.post(
+            f"/api/v1/navigation/sessions/{session_id}/position",
+            headers=AUTH,
+            json=position_payload(
+                fast_point[1], fast_point[0], base_time + timedelta(seconds=12)
+            ),
+        )
+        client.post(
+            f"/api/v1/navigation/sessions/{session_id}/position",
+            headers=AUTH,
+            json=position_payload(
+                fast_point[1], fast_point[0], base_time + timedelta(seconds=200)
+            ),
+        )
+        state = client.app.state.container.navigation_service.debug_state(session_id)
+
+    assert state.walk_speed_samples == []
 
 
 def test_completion_without_walk_samples_keeps_existing_speed() -> None:

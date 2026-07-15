@@ -51,7 +51,7 @@ class HybridAccessibilityProvider:
                         leg.provider_leg_id, leg.start, leg.end
                     )
                     walk[leg.provider_leg_id] = WalkAccessibility(
-                        has_stairs=bool(segment.has_stairs),
+                        has_stairs=segment.has_stairs,
                         max_slope_percent=segment.max_slope_percent,
                         surface_type=segment.surface_type,
                         width_m=segment.width_m,

@@ -6,7 +6,7 @@ import {
   mapRouteFromApi,
   mapRouteSearchFromApi,
 } from "./mappers";
-import type { ApiRoute, ApiUserProfile } from "./types";
+import type { ApiRoute, ApiUserProfile, ApiWalkLeg } from "./types";
 
 const apiProfile: ApiUserProfile = {
   userId: "usr_demo_001",
@@ -178,5 +178,22 @@ describe("route mappers", () => {
         notices: [],
       }),
     ).toEqual({ status: "NO_ACCESSIBLE_ROUTE", routes: [], fallbackModes: ["taxi"], notices: [] });
+  });
+
+  it("shows unknown stair data without claiming the route is stair-free", () => {
+    const unknownWalkLeg: ApiWalkLeg = {
+      ...(apiRoute.legs[0] as ApiWalkLeg),
+      hasStairs: null,
+      maxSlopePercent: null,
+      dataConfidence: "UNKNOWN",
+      dataSource: "UNKNOWN",
+    };
+    const route = mapRouteFromApi({
+      ...apiRoute,
+      legs: [unknownWalkLeg],
+    });
+
+    expect(route.segments[0].tags).toContain("계단 정보 미확인");
+    expect(route.segments[0].facilityStatus).toBe("UNKNOWN");
   });
 });

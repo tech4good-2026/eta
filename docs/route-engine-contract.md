@@ -56,6 +56,7 @@ def personalize_routes(
 - `stationFacilities`: 역별 엘리베이터·휠체어리프트 상태와 위치
 - `walkingSegments`: 보행 구간별 계단 여부, 최대 경사, 통행 가능 상태
 - 각 값은 `dataConfidence: VERIFIED | ESTIMATED | UNKNOWN`, `observedAt`, `source`를 가집니다.
+- 실제 보행환경 데이터가 없으면 `UnknownWalkwaySource`가 nullable 필드를 미확인 상태로 유지하며, 엔진은 확인되지 않은 값으로 환경 패널티나 `계단 없음` 판정을 만들지 않습니다.
 
 ## 3. 출력 모델
 

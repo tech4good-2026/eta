@@ -187,7 +187,7 @@ class WalkLeg(BaseLeg):
     mode: Literal["WALK"] = "WALK"
     steps: list[WalkStep]
     max_slope_percent: float | None = Field(default=None, ge=0)
-    has_stairs: bool
+    has_stairs: bool | None = None
     surface_type: SurfaceType | None = None
     width_m: float | None = Field(default=None, ge=0)
     curb_ramp_present: bool | None = None

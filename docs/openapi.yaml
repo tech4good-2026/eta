@@ -511,17 +511,18 @@ components:
         walkingSpeedSampleCount:
           type: integer
           minimum: 0
+          description: 여러 안내 세션에서 누적된 유효 보행 속도 표본 수.
         updatedAt:
           type: string
           format: date-time
         baseSpeedMps:
           type: number
-          description: 센서로 측정한 평상시 보행속도.
+          description: 기존 속도와 세션 중앙값을 누적 표본 수로 가중한 평상시 보행속도.
           exclusiveMinimum: 0
           maximum: 3
         maxSpeedMps:
           type: number
-          description: 센서로 측정한 최고 보행속도.
+          description: 모든 학습 세션에서 확인된 유효 최고 보행속도.
           exclusiveMinimum: 0
           maximum: 3
     UpdateProfileRequest:
@@ -803,7 +804,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/BaseLeg'
         - type: object
-          required: [mode, steps, hasStairs, dataConfidence]
+          required: [mode, steps, dataConfidence]
           properties:
             mode:
               type: string
@@ -816,7 +817,8 @@ components:
               type: number
               minimum: 0
             hasStairs:
-              type: boolean
+              type: [boolean, 'null']
+              description: 계단 여부. 확인할 수 없으면 null 또는 필드 생략.
             surfaceType:
               $ref: '#/components/schemas/SurfaceType'
             widthM:

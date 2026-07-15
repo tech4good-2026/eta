@@ -70,14 +70,25 @@ class DemoProfileStore:
         sample_count: int,
     ) -> UserProfile:
         """센서(안내 중 GPS)로 측정한 기본·최고 보행속도를 프로필에 반영한다."""
+        previous = self._profile.walking_speed
+        previous_count = previous.walking_speed_sample_count
+        previous_base = previous.base_speed_mps or previous.walking_speed_mps
+        previous_max = previous.max_speed_mps or previous_base
+        total_count = previous_count + sample_count
+        cumulative_base = round(
+            (previous_base * previous_count + base_speed_mps * sample_count)
+            / total_count,
+            2,
+        )
+        cumulative_max = round(max(previous_max, max_speed_mps), 2)
         walking_speed = self._profile.walking_speed.model_copy(
             update={
-                "walking_speed_mps": base_speed_mps,
+                "walking_speed_mps": cumulative_base,
                 "walking_speed_source": "LEARNED",
-                "walking_speed_sample_count": sample_count,
+                "walking_speed_sample_count": total_count,
                 "updated_at": datetime.now(SEOUL),
-                "base_speed_mps": base_speed_mps,
-                "max_speed_mps": max_speed_mps,
+                "base_speed_mps": cumulative_base,
+                "max_speed_mps": cumulative_max,
             }
         )
         self._profile = self._profile.model_copy(

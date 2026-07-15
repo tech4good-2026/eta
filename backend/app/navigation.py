@@ -241,6 +241,8 @@ class NavigationService:
                 base_speed, max_speed, sample_count
             ).walking_speed
             walking_speed_updated = True
+        state.last_walk_sample = None
+        state.walk_speed_samples.clear()
         state.session = state.session.model_copy(
             update={
                 "status": NavigationStatus.COMPLETED,
@@ -307,12 +309,19 @@ class NavigationService:
         보행 구간(가장 가까운 leg가 WALK)일 때, 표본 정확도·간격·속도가 타당한
         경우만 수집한다. 차량 이동(속도 상한 초과)이나 정지는 자연히 걸러진다.
         """
+        if (
+            sample.accuracy_m > self.walk_speed_accuracy_limit_m
+            or not self._on_walk_leg(
+                sample.coordinate,
+                state.session.route.legs,
+                sample.accuracy_m,
+            )
+        ):
+            state.last_walk_sample = None
+            return
+
         previous = state.last_walk_sample
-        state.last_walk_sample = (
-            sample.coordinate,
-            sample.recorded_at,
-            sample.accuracy_m,
-        )
+        state.last_walk_sample = (sample.coordinate, sample.recorded_at, sample.accuracy_m)
         if previous is None:
             return
         prev_coordinate, prev_time, prev_accuracy = previous
@@ -323,12 +332,7 @@ class NavigationService:
             <= self.walk_speed_max_interval_sec
         ):
             return
-        if (
-            sample.accuracy_m > self.walk_speed_accuracy_limit_m
-            or prev_accuracy > self.walk_speed_accuracy_limit_m
-        ):
-            return
-        if not self._on_walk_leg(sample.coordinate, state.session.route.legs):
+        if prev_accuracy > self.walk_speed_accuracy_limit_m:
             return
         speed = self._distance_m(prev_coordinate, sample.coordinate) / elapsed
         if self.walk_speed_min_mps <= speed <= self.walk_speed_max_mps:
@@ -344,9 +348,18 @@ class NavigationService:
         max_speed = round(min(max(max(samples), base_speed), 3.0), 2)
         return base_speed, max_speed, len(samples)
 
-    def _on_walk_leg(self, coordinate: Coordinate, legs: list[RouteLeg]) -> bool:
-        leg = self._nearest_leg(coordinate, legs)
-        return leg is not None and leg.mode == LegMode.WALK
+    def _on_walk_leg(
+        self,
+        coordinate: Coordinate,
+        legs: list[RouteLeg],
+        accuracy_m: float,
+    ) -> bool:
+        leg, distance = self._nearest_leg(coordinate, legs)
+        return (
+            leg is not None
+            and leg.mode == LegMode.WALK
+            and distance <= self.off_route_threshold_m + accuracy_m
+        )
 
     @classmethod
     def _nearest_leg(cls, coordinate: Coordinate, legs: list[RouteLeg]):
@@ -359,7 +372,7 @@ class NavigationService:
                 if distance < best_distance:
                     best_distance = distance
                     best_leg = leg
-        return best_leg
+        return best_leg, best_distance
 
     @staticmethod
     def _next_transit_leg(legs: list[RouteLeg]):
