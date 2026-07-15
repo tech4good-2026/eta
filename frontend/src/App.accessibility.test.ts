@@ -28,3 +28,19 @@ describe("main map search entry", () => {
     );
   });
 });
+
+describe("default current location origin", () => {
+  it("hides the location prompt as soon as location resolution starts", () => {
+    const source = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+
+    expect(source).toContain('"PROMPT" | "REQUESTING" | "GRANTED" | "DENIED"');
+    expect(source).toContain('setGeolocationStatus("REQUESTING")');
+    expect(source).toContain('geolocationStatus === "PROMPT"');
+  });
+
+  it("resolves the current origin when a destination is selected without an origin", () => {
+    const source = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+
+    expect(source).toContain("void requestCurrentOrigin(searchTarget)");
+  });
+});

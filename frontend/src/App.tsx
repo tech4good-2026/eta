@@ -44,6 +44,10 @@ import { ProfileScreen } from "./components/ProfileScreen";
 import { NavigationScreen } from "./components/NavigationScreen";
 import { ArrivalScreen } from "./components/ArrivalScreen";
 import { clearDemoSession, getDemoSession } from "./utils/demoSession";
+import {
+  createCurrentLocationPlace,
+  getCurrentCoordinates,
+} from "./utils/currentLocation";
 import { getSpeedMultiplier } from "./utils/routing";
 
 export default function App() {
@@ -68,7 +72,9 @@ export default function App() {
   const [isOffline, setIsOffline] = useState<boolean>(false);
   const [hasNetworkError, setHasNetworkError] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [geolocationStatus, setGeolocationStatus] = useState<"PROMPT" | "GRANTED" | "DENIED">("PROMPT");
+  const [geolocationStatus, setGeolocationStatus] = useState<
+    "PROMPT" | "REQUESTING" | "GRANTED" | "DENIED"
+  >("PROMPT");
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number }>({ lat: 37.5547, lng: 126.9707 }); // 서울역
 
   // Search/Routing state
@@ -88,6 +94,7 @@ export default function App() {
   const [navigationCompletion, setNavigationCompletion] = useState<ApiNavigationCompletion | null>(null);
   const [navigationStartSpeed, setNavigationStartSpeed] = useState(1);
   const routeCacheRef = useRef(new Map<string, { status: "SUCCESS" | "NO_ACCESSIBLE_ROUTE"; routes: RouteInfo[] }>());
+  const locationRequestInFlightRef = useRef(false);
 
   // Toast status
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -121,40 +128,37 @@ export default function App() {
     }
   }, [toastVisible]);
 
-  // Request browser location permission (F-MAP-02)
-  const handleRequestLocation = () => {
-    if (!navigator.geolocation) {
-      setGeolocationStatus("DENIED");
-      showToast("브라우저가 현재 위치 탐색을 제공하지 않습니다.");
-      return;
-    }
+  // Request browser location permission and optionally continue route search (F-MAP-02).
+  const requestCurrentOrigin = async (routeDestination?: Place) => {
+    if (locationRequestInFlightRef.current) return;
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGeolocationStatus("GRANTED");
-        const nextCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setCurrentCoords(nextCoords);
-        showToast("위치 권한 동의 완료: 현위치 주변 안전 노선을 스캔합니다.");
+    locationRequestInFlightRef.current = true;
+    setGeolocationStatus("REQUESTING");
 
-        // Setup current position as custom starting place
-        const customOrigin: Place = {
-          id: "current-gps",
-          name: "나의 현위치 (GPS)",
-          addr: "GPS로 수신한 현재 실시간 좌표",
-          tag: "현재 수신지점",
-          lat: nextCoords.lat,
-          lng: nextCoords.lng,
-          category: "현위치",
-          phone: "없음",
-          placeUrl: ""
-        };
-        setOrigin(customOrigin);
-      },
-      () => {
-        setGeolocationStatus("DENIED");
-        showToast("위치 권한이 거부되었습니다. 직접 검색 모드를 이용해 주세요.");
+    try {
+      const nextCoords = await getCurrentCoordinates(navigator.geolocation);
+      const currentOrigin = createCurrentLocationPlace(nextCoords);
+
+      setGeolocationStatus("GRANTED");
+      setCurrentCoords(nextCoords);
+      setOrigin(currentOrigin);
+      showToast("현재 위치를 출발지로 설정했습니다.");
+
+      if (routeDestination) {
+        await handleQueryRoutes(mode, currentOrigin, routeDestination);
       }
-    );
+    } catch {
+      setGeolocationStatus("DENIED");
+      setSearchQuery("");
+      setScreen("search");
+      showToast("현재 위치를 확인할 수 없습니다. 출발지를 직접 검색해 주세요.");
+    } finally {
+      locationRequestInFlightRef.current = false;
+    }
+  };
+
+  const handleRequestLocation = () => {
+    void requestCurrentOrigin();
   };
 
   const handleAuthSuccess = async (email: string) => {
@@ -215,6 +219,12 @@ export default function App() {
 
   const handleSetPlace = (type: "origin" | "destination") => {
     if (!searchTarget) return;
+
+    if (type === "destination" && !origin) {
+      setDestination(searchTarget);
+      void requestCurrentOrigin(searchTarget);
+      return;
+    }
 
     if (type === "origin") {
       setOrigin(searchTarget);
@@ -479,7 +489,7 @@ export default function App() {
 
               {/* Current Location Request Guide Box (F-MAP-01 / F-MAP-02) */}
               <div className="absolute bottom-4 left-4 right-4 z-10 flex flex-col gap-2">
-                {geolocationStatus !== "GRANTED" && (
+                {geolocationStatus === "PROMPT" && (
                   <div className="bg-white/95 backdrop-blur p-3.5 rounded-[20px] border border-slate-200 shadow-md">
                     <h4 className="text-[12.5px] font-black text-slate-800 flex items-center gap-1.5">
                       <Locate className="w-4.5 h-4.5 text-blue-600 animate-pulse" />
