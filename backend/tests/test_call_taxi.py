@@ -131,8 +131,38 @@ async def test_recommends_call_taxi_when_bus_wait_is_long_and_taxi_is_faster() -
     assert "CALL_TAXI_RECOMMENDED" in codes
     assert "TAXI" in [str(mode) for mode in response.fallback_modes]
     assert any(
-        warning.code == "CALL_TAXI_RECOMMENDED" for warning in response.routes[0].warnings
+        warning.code == "CALL_TAXI_RECOMMENDED"
+        for route in response.routes
+        for warning in route.warnings
     )
+
+
+@pytest.mark.asyncio
+async def test_hybrid_transit_taxi_route_is_added_when_faster() -> None:
+    response = await _service(bus_wait_min=20, taxi_sec=900).search(
+        _request(), demo_profile()
+    )
+
+    assert len(response.routes) == 2
+    hybrid = response.routes[0]
+    # 결합 경로가 더 빨라 1위가 된다: 도보 접근 + 콜택시.
+    assert "콜택시" in hybrid.title
+    assert [leg.mode for leg in hybrid.legs] == ["WALK", "TAXI"]
+    assert any(warning.code == "HYBRID_CALL_TAXI" for warning in hybrid.warnings)
+    assert (
+        hybrid.summary.personalized_duration_sec
+        < response.routes[1].summary.personalized_duration_sec
+    )
+
+
+@pytest.mark.asyncio
+async def test_hybrid_route_is_not_added_when_transit_is_faster() -> None:
+    response = await _service(bus_wait_min=3, taxi_sec=900).search(
+        _request(), demo_profile()
+    )
+
+    assert len(response.routes) == 1
+    assert not any("콜택시" in route.title for route in response.routes)
 
 
 @pytest.mark.asyncio

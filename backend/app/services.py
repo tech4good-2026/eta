@@ -2,6 +2,7 @@ import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from dataclasses import replace as dataclass_replace
 from datetime import datetime, timedelta
 from math import ceil
 from uuid import uuid4
@@ -10,6 +11,7 @@ from app.domain import ProviderRoute
 from app.errors import ApiError
 from app.models import (
     AccessibilityStatus,
+    LegMode,
     Notice,
     Route,
     RouteMode,
@@ -21,6 +23,8 @@ from app.models import (
 from app.personalization import PersonalizationEngine
 from app.providers.base import AccessibilityContextProvider, RouteProvider
 from app.storage import MemoryTTLStore, StoreState
+
+_STATUS_RANK = {"ACCESSIBLE": 0, "CAUTION": 1, "UNAVAILABLE": 2}
 
 
 @dataclass(frozen=True)
@@ -74,6 +78,25 @@ class RouteService:
             for route in personalized
             if route.accessibility_status != AccessibilityStatus.UNAVAILABLE
         ]
+        # 대중교통+콜택시 결합 경로: 버스 구간을 콜택시로 대체한 후보를 계산해
+        # 기존 최적 경로보다 빠르면 결과에 추가한다.
+        if request.mode == RouteMode.TRANSIT and usable:
+            hybrid = await self._hybrid_taxi_route(
+                request, profile, candidates, requested_at
+            )
+            if (
+                hybrid is not None
+                and str(hybrid.accessibility_status) != "UNAVAILABLE"
+                and hybrid.summary.personalized_duration_sec
+                < usable[0].summary.personalized_duration_sec
+            ):
+                usable.append(hybrid)
+                usable.sort(
+                    key=lambda route: (
+                        _STATUS_RANK.get(str(route.accessibility_status), 2),
+                        route.summary.personalized_duration_sec,
+                    )
+                )
         routes: list[Route] = []
         for rank, route in enumerate(usable, start=1):
             stored_route = route.model_copy(
@@ -94,15 +117,31 @@ class RouteService:
                 request.mode == RouteMode.TRANSIT
                 and profile.preferences.low_floor_bus_required
             ):
-                recommendation = await self._call_taxi_recommendation(
-                    request, profile, routes[0], requested_at
+                # 결합 경로(버스 없음)가 1위일 수 있으므로 버스가 포함된 최상위
+                # 경로를 기준으로 저상버스 대기를 평가한다.
+                bus_index = next(
+                    (
+                        index
+                        for index, route in enumerate(routes)
+                        if any(leg.mode == "BUS" for leg in route.legs)
+                    ),
+                    None,
                 )
-                if recommendation is not None:
-                    notices.append(recommendation)
-                    fallbacks.append(RouteMode.TAXI)
-                    routes[0] = routes[0].model_copy(
-                        update={"warnings": [recommendation, *routes[0].warnings]}
+                if bus_index is not None:
+                    recommendation = await self._call_taxi_recommendation(
+                        request, profile, routes[bus_index], requested_at
                     )
+                    if recommendation is not None:
+                        notices.append(recommendation)
+                        fallbacks.append(RouteMode.TAXI)
+                        routes[bus_index] = routes[bus_index].model_copy(
+                            update={
+                                "warnings": [
+                                    recommendation,
+                                    *routes[bus_index].warnings,
+                                ]
+                            }
+                        )
         else:
             status = SearchStatus.NO_ACCESSIBLE_ROUTE
             fallbacks = [RouteMode.TAXI] if request.mode == RouteMode.TRANSIT else []
@@ -137,6 +176,83 @@ class RouteService:
             notices=notices,
         )
         return response
+
+    async def _hybrid_taxi_route(
+        self,
+        request: RouteSearchRequest,
+        profile: UserProfile,
+        candidates: list[ProviderRoute],
+        requested_at: datetime,
+    ) -> Route | None:
+        """버스 승차 지점부터 콜택시로 대체한 대중교통+콜택시 결합 경로를 만든다."""
+        base = next(
+            (
+                candidate
+                for candidate in candidates
+                if any(leg.mode == LegMode.BUS for leg in candidate.legs)
+            ),
+            None,
+        )
+        if base is None:
+            return None
+        bus_position = next(
+            index for index, leg in enumerate(base.legs) if leg.mode == LegMode.BUS
+        )
+        prefix = list(base.legs[:bus_position])
+        if not prefix:
+            return None
+        handover = base.legs[bus_position].start
+        taxi_request = RouteSearchRequest(
+            origin=handover,
+            destination=request.destination,
+            mode=RouteMode.TAXI,
+            departure_at=request.departure_at,
+        )
+        try:
+            taxi_candidates = await self.provider.search(taxi_request)
+        except ApiError:
+            return None
+        if not taxi_candidates or not taxi_candidates[0].legs:
+            return None
+        taxi = taxi_candidates[0]
+        taxi_leg = dataclass_replace(
+            taxi.legs[0], provider_leg_id="hybrid_taxi_1"
+        )
+        legs = [*prefix, taxi_leg]
+        has_transit_prefix = any(
+            leg.mode in {LegMode.BUS, LegMode.SUBWAY} for leg in prefix
+        )
+        hybrid = ProviderRoute(
+            provider_route_id=f"hybrid_{base.provider_route_id}",
+            mode=RouteMode.TRANSIT,
+            title=f"{handover.name}부터 콜택시 결합",
+            standard_duration_sec=sum(leg.duration_sec for leg in legs),
+            total_distance_m=sum(leg.distance_m for leg in legs),
+            walk_distance_m=sum(
+                leg.distance_m for leg in prefix if leg.mode == LegMode.WALK
+            ),
+            transfer_count=sum(
+                1 for leg in prefix if leg.mode in {LegMode.BUS, LegMode.SUBWAY}
+            ),
+            fare_krw=(base.fare_krw if has_transit_prefix else 0) + taxi.fare_krw,
+            legs=legs,
+        )
+        context = await self.accessibility.get_context([hybrid])
+        personalized = self.engine.personalize_routes(
+            [hybrid], profile, context, requested_at
+        )
+        if not personalized:
+            return None
+        route = personalized[0]
+        note = Notice(
+            code="HYBRID_CALL_TAXI",
+            severity="INFO",
+            message=(
+                f"저상버스 대기 없이 {handover.name}부터 장애인 콜택시로 "
+                "이동하는 결합 경로입니다."
+            ),
+        )
+        return route.model_copy(update={"warnings": [note, *route.warnings]})
 
     async def _call_taxi_recommendation(
         self,

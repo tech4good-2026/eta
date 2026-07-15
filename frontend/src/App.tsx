@@ -49,6 +49,7 @@ import {
   getCurrentCoordinates,
 } from "./utils/currentLocation";
 import { getSpeedMultiplier } from "./utils/routing";
+import { loadWalkReports, saveWalkReport } from "./utils/walkReports";
 
 export default function App() {
   // Navigation Screens: login | main | profile-setup | profile-edit | search | place | route-search | route-detail | navigation | arrival
@@ -93,6 +94,7 @@ export default function App() {
   const [navigationSession, setNavigationSession] = useState<ApiNavigationSession | null>(null);
   const [navigationCompletion, setNavigationCompletion] = useState<ApiNavigationCompletion | null>(null);
   const [navigationStartSpeed, setNavigationStartSpeed] = useState(1);
+  const [walkReportCount, setWalkReportCount] = useState(() => loadWalkReports().length);
   const routeCacheRef = useRef(new Map<string, { status: "SUCCESS" | "NO_ACCESSIBLE_ROUTE"; routes: RouteInfo[] }>());
   const locationRequestInFlightRef = useRef(false);
   const pendingRouteDestinationRef = useRef<Place | null>(null);
@@ -174,6 +176,21 @@ export default function App() {
     void requestCurrentOrigin();
   };
 
+  // 위치 권한이 이미 허용된 경우에만 자동으로 현위치를 사용한다.
+  // 권한이 없거나 거부된 상태에서는 브라우저 프롬프트를 자동으로 띄우지 않는다.
+  const canUseGeolocationSilently = async (): Promise<boolean> => {
+    if (geolocationStatus === "DENIED") return false;
+    try {
+      const permission = await navigator.permissions?.query?.({
+        name: "geolocation" as PermissionName,
+      });
+      if (permission) return permission.state === "granted";
+    } catch {
+      // Permissions API 미지원 브라우저는 이전 상태로 판단한다.
+    }
+    return geolocationStatus === "GRANTED";
+  };
+
   const handleAuthSuccess = async (email: string) => {
     const serverProfile = await api.getProfile();
     setUserEmail(email);
@@ -235,7 +252,15 @@ export default function App() {
 
     if (type === "destination" && !origin) {
       setDestination(searchTarget);
-      void requestCurrentOrigin(searchTarget);
+      void (async () => {
+        if (await canUseGeolocationSilently()) {
+          void requestCurrentOrigin(searchTarget);
+        } else {
+          setSearchQuery("");
+          setScreen("search");
+          showToast("위치 권한이 꺼져 있어요. 출발지를 직접 선택하거나 현위치 버튼을 눌러주세요.");
+        }
+      })();
       return;
     }
 
@@ -341,6 +366,9 @@ export default function App() {
   const handleCompleteNavigation = async (sessionId: string) => {
     const completion = await api.completeNavigation(sessionId);
     setNavigationCompletion(completion);
+    // 리포트의 걸음 데이터(속도·표본)를 기기에 저장한다. 좌표는 저장하지 않는다.
+    const reports = saveWalkReport(completion);
+    setWalkReportCount(reports.length);
     setProfile((current) => ({
       ...current,
       walkingSpeedMps: completion.walkingSpeed.walkingSpeedMps,
@@ -351,9 +379,9 @@ export default function App() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-slate-900 font-sans p-0 sm:p-4">
-      {/* Smartphone frame container layout */}
-      <div className="w-full max-w-[428px] h-screen sm:h-[860px] bg-slate-50 shadow-2xl relative flex flex-col overflow-hidden sm:rounded-[40px] sm:border-[8px] sm:border-slate-850">
+    <div className="flex justify-center items-start sm:items-center min-h-[100dvh] bg-slate-900 font-sans p-0 sm:p-4 overflow-y-auto">
+      {/* Smartphone frame container layout — 창이 작아도 프레임이 화면 안에 맞고 내부가 스크롤된다 */}
+      <div className="w-full max-w-[428px] h-[100dvh] sm:h-[860px] sm:max-h-[calc(100dvh-32px)] bg-slate-50 shadow-2xl relative flex flex-col overflow-hidden sm:rounded-[40px] sm:border-[8px] sm:border-slate-850">
 
         {/* Offline Banner indicator (Section 6 & 11) */}
         {isOffline && (
@@ -1044,6 +1072,7 @@ export default function App() {
             route={selectedRoute}
             previousSpeed={navigationStartSpeed}
             completion={navigationCompletion}
+            savedReportCount={walkReportCount}
             onHome={() => setScreen("main")}
             onLogout={() => {
               clearDemoSession();

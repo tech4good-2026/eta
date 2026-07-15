@@ -9,11 +9,12 @@ interface ArrivalScreenProps {
   route: RouteInfo;
   previousSpeed: number;
   completion: ApiNavigationCompletion;
+  savedReportCount?: number;
   onHome: () => void;
   onLogout: () => void;
 }
 
-export function ArrivalScreen({ route, previousSpeed, completion, onHome, onLogout }: ArrivalScreenProps) {
+export function ArrivalScreen({ route, previousSpeed, completion, savedReportCount, onHome, onLogout }: ArrivalScreenProps) {
   const speed = completion.walkingSpeed.walkingSpeedMps;
   const samples = completion.walkingSpeed.walkingSpeedSampleCount;
   const baseSpeed = completion.walkingSpeed.baseSpeedMps;
@@ -76,6 +77,12 @@ export function ArrivalScreen({ route, previousSpeed, completion, onHome, onLogo
           <PaceBar speedFactor={speed / 1.3} />
           <span className="text-[9.5px] text-slate-400">표본: {samples}회</span>
         </div>
+
+        {savedReportCount != null && savedReportCount > 0 && (
+          <p className="text-[10.5px] font-bold text-emerald-600">
+            ✓ 걸음 데이터가 이 기기에 저장되었습니다 (누적 리포트 {savedReportCount}회)
+          </p>
+        )}
 
         {baseSpeed != null && maxSpeed != null && (
           <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100 grid grid-cols-2 gap-2 text-center text-slate-700 font-bold">
