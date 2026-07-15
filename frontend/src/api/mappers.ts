@@ -160,6 +160,22 @@ function legToSegment(leg: ApiRouteLeg): RouteSegment {
   };
 }
 
+function legMode(leg: ApiRouteLeg): RouteSegment["mode"] {
+  if (leg.mode === "BUS") return "bus";
+  if (leg.mode === "SUBWAY") return "subway";
+  if (leg.mode === "TAXI") return "taxi";
+  return "walk";
+}
+
+function collectMapSegments(legs: ApiRouteLeg[]) {
+  return legs.map((leg) => ({
+    mode: legMode(leg),
+    points: leg.geometry.coordinates
+      .filter((coordinate) => coordinate.length >= 2)
+      .map((coordinate) => ({ lng: coordinate[0], lat: coordinate[1] })),
+  }));
+}
+
 function collectMapPoints(legs: ApiRouteLeg[]) {
   const points: { lat: number; lng: number }[] = [];
   for (const leg of legs) {
@@ -204,6 +220,7 @@ export function mapRouteFromApi(route: ApiRoute): RouteInfo {
     notices: [...route.warnings, ...route.unavailableReasons].map(noticeToUi),
     segments: route.legs.map(legToSegment),
     mapPoints: collectMapPoints(route.legs),
+    mapSegments: collectMapSegments(route.legs),
     stationOptions: collectStations(route.legs),
   };
 }

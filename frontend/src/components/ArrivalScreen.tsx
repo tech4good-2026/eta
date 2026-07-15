@@ -27,7 +27,7 @@ export function ArrivalScreen({ route, previousSpeed, completion, onHome, onLogo
         </div>
         <h1 className="text-[21.5px] font-black text-slate-900 mb-1">안전하게 완주했습니다!</h1>
         <p className="text-[13px] text-slate-500 leading-relaxed">
-          장애물과 가파른 턱을 무사히 우회하여 맞춤 목적지에 안착 완료했습니다.
+          장애물과 위험 구간을 무사히 우회하여 맞춤 목적지에 안착 완료했습니다.
         </p>
       </div>
 

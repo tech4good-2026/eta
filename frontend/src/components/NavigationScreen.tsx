@@ -1,5 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ChevronRight, Layers, MapPin } from "lucide-react";
+import {
+  AlertTriangle,
+  Bus,
+  Car,
+  Check,
+  ChevronRight,
+  Footprints,
+  Layers,
+  MapPin,
+  TrainFront,
+  type LucideIcon,
+} from "lucide-react";
 
 import { api, ApiClientError } from "../api/client";
 import { mapPlaceToApi, mapRouteFromApi } from "../api/mappers";
@@ -9,10 +20,19 @@ import type {
   ApiNavigationUpdate,
   ApiRerouteReason,
 } from "../api/types";
-import type { Place, RouteInfo } from "../types";
+import type { Place, RouteInfo, RouteSegment } from "../types";
+
+const MODE_META: Record<
+  RouteSegment["mode"],
+  { label: string; Icon: LucideIcon; chip: string; ring: string; line: string }
+> = {
+  walk: { label: "도보", Icon: Footprints, chip: "bg-emerald-100 text-emerald-700", ring: "border-emerald-200", line: "#059669" },
+  bus: { label: "버스", Icon: Bus, chip: "bg-blue-100 text-blue-700", ring: "border-blue-200", line: "#2563EB" },
+  subway: { label: "지하철", Icon: TrainFront, chip: "bg-violet-100 text-violet-700", ring: "border-violet-200", line: "#7C3AED" },
+  taxi: { label: "택시", Icon: Car, chip: "bg-amber-100 text-amber-700", ring: "border-amber-200", line: "#D97706" },
+};
 import { createDemoOffRouteCoordinate } from "../utils/navigationDemo";
 import { KakaoMap } from "./KakaoMap";
-import { PaceBar } from "./PaceBar";
 
 interface NavigationScreenProps {
   session: ApiNavigationSession;
@@ -30,7 +50,6 @@ export function NavigationScreen({
   session: initialSession,
   origin,
   destination,
-  speedFactor,
   onRouteChange,
   onFinish,
   showToast,
@@ -187,6 +206,9 @@ export function NavigationScreen({
 
   const navSteps = route.segments;
   const currentStep = navSteps[navIndex];
+  const routeModes = route.mapSegments
+    .map((segment) => segment.mode)
+    .filter((mode, index, all) => all.indexOf(mode) === index);
 
   return (
     <div className="flex-1 flex flex-col" id="view-navigation-screen">
@@ -210,7 +232,19 @@ export function NavigationScreen({
             { lat: destination.lat, lng: destination.lng, title: destination.name, type: "dest" },
           ]}
           routePath={route.mapPoints}
+          routeSegments={route.mapSegments}
         />
+
+        {routeModes.length > 0 && (
+          <div className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur rounded-lg shadow border border-slate-200 px-2 py-1.5 flex flex-col gap-1">
+            {routeModes.map((mode) => (
+              <div key={mode} className="flex items-center gap-1.5 text-[9.5px] font-bold text-slate-600">
+                <span className="w-4 h-[3px] rounded-full shrink-0" style={{ backgroundColor: MODE_META[mode].line }}></span>
+                {MODE_META[mode].label}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="absolute bottom-3 left-4 right-4 bg-slate-950/80 backdrop-blur px-3 py-1.5 rounded-lg text-[10.5px] font-mono font-bold text-slate-200 z-10 flex items-center justify-between shadow">
           <span className="flex items-center gap-1.5 truncate">
@@ -234,9 +268,17 @@ export function NavigationScreen({
         <div className="bg-blue-600 text-white p-4.5 shrink-0 relative">
           <div className="flex justify-between items-start mb-1.5">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-80 block">
-                전체 {navSteps.length}개 턱 완화 리스트 중 ({navIndex + 1} / {navSteps.length})
-              </span>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                  전체 경로 {navSteps.length}개 구간 ({navIndex + 1} / {navSteps.length})
+                </span>
+                {currentStep && (
+                  <span className="inline-flex items-center gap-1 bg-white/20 text-white font-bold px-1.5 py-0.5 rounded text-[10px]">
+                    {React.createElement(MODE_META[currentStep.mode].Icon, { className: "w-3 h-3" })}
+                    {MODE_META[currentStep.mode].label}
+                  </span>
+                )}
+              </div>
               <h3 className="text-[17px] font-black tracking-tight mt-0.5">
                 {currentStep?.title || "최종 목적지에 거의 도착했습니다."}
               </h3>
@@ -249,10 +291,6 @@ export function NavigationScreen({
             )}
           </div>
           <p className="text-[13px] opacity-90 leading-relaxed">{currentStep?.desc}</p>
-          <div className="flex items-center gap-3 border-t border-white/20 mt-3 pt-2">
-            <span className="text-[10.5px] font-bold opacity-85 shrink-0">개인 보행 템포 속도 박자</span>
-            <PaceBar speedFactor={speedFactor} />
-          </div>
         </div>
 
         {rerouteSuggestion && (
@@ -309,21 +347,26 @@ export function NavigationScreen({
             {navSteps.map((step, idx) => {
               const isCompleted = idx < navIndex;
               const isActive = idx === navIndex;
+              const meta = MODE_META[step.mode];
+              const StepIcon = meta.Icon;
               return (
                 <div
                   key={step.legId || idx}
                   className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                    isActive ? "bg-white border-blue-600 shadow-sm" : "bg-slate-100/60 border-slate-200"
+                    isActive ? `bg-white ${meta.ring} shadow-sm` : "bg-slate-100/60 border-slate-200"
                   } ${isCompleted ? "opacity-45" : ""}`}
                 >
-                  <span className={`w-5.5 h-5.5 rounded-full flex items-center justify-center font-mono text-[10px] font-black shrink-0 ${
-                    isCompleted ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"
+                  <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                    isCompleted ? "bg-blue-600 text-white" : meta.chip
                   }`}>
-                    {isCompleted ? "✓" : idx + 1}
+                    {isCompleted ? <Check className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-[12.5px] font-bold text-slate-900">{step.title}</h4>
-                    <p className="text-[11px] text-slate-500 truncate">{step.desc}</p>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] shrink-0 ${meta.chip}`}>{meta.label}</span>
+                      <h4 className="text-[12.5px] font-bold text-slate-900 truncate">{step.title}</h4>
+                    </div>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">{step.desc}</p>
                   </div>
                   {step.facilityStatus === "UNKNOWN" && (
                     <span className="bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase shrink-0">UNKNOWN</span>
@@ -349,7 +392,7 @@ export function NavigationScreen({
             disabled={busy}
             className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-[13.5px] flex items-center justify-center gap-1.5 shadow-sm transform active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
-            <span>{navIndex + 1 === navSteps.length ? "목적지 하차 완료" : "다음 위험턱 확인"}</span>
+            <span>{navIndex + 1 === navSteps.length ? "목적지 도착 완료" : "다음 구간 확인"}</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>

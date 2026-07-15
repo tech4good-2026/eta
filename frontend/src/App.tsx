@@ -938,6 +938,7 @@ export default function App() {
                   { lat: destination.lat, lng: destination.lng, title: destination.name, type: "dest" }
                 ]}
                 routePath={selectedRoute.mapPoints}
+                routeSegments={selectedRoute.mapSegments}
               />
             </div>
 

@@ -56,6 +56,7 @@ export interface RouteInfo {
   notices: RouteNotice[];
   segments: RouteSegment[];
   mapPoints: { lat: number; lng: number }[];
+  mapSegments: { mode: RouteSegment["mode"]; points: { lat: number; lng: number }[] }[];
   stationOptions: Place[];
 }
 
