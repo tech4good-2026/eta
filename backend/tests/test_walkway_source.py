@@ -3,7 +3,7 @@ import pytest
 from app.domain import ProviderLeg, ProviderRoute
 from app.models import Coordinate, DataConfidence, DataSource, LegMode, PlaceInput, RouteMode
 from app.providers.accessibility import HybridAccessibilityProvider
-from app.providers.walkway import UnknownWalkwaySource
+from app.providers.walkway import MockWalkwaySource, UnknownWalkwaySource
 
 
 def _place(latitude: float, longitude: float) -> PlaceInput:
@@ -61,3 +61,19 @@ async def test_accessibility_provider_preserves_unknown_stair_state() -> None:
     ).get_context([route])
 
     assert context.walk["walk-1"].has_stairs is None
+
+
+def test_mock_walkway_is_deterministic_and_marked_synthetic() -> None:
+    source = MockWalkwaySource()
+    start = _place(37.5, 127.0)
+    end = _place(37.51, 127.01)
+
+    first = source.segment_for("leg-1", start, end)
+    second = source.segment_for("leg-1", start, end)
+
+    assert first == second
+    assert first.source == DataSource.SYNTHETIC_FIXTURE
+    assert first.confidence == DataConfidence.ESTIMATED
+    # 목업 경사는 급경사 하드 차단(6%) 아래에 머문다.
+    assert first.max_slope_percent is not None
+    assert 0 <= first.max_slope_percent < 6

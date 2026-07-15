@@ -3,6 +3,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from math import ceil
 from uuid import uuid4
 
 from app.domain import ProviderRoute
@@ -29,6 +30,9 @@ class StoredRoute:
 
 
 class RouteService:
+    # 다음 저상버스 대기가 이 시간을 넘고 콜택시가 더 빠르면 콜택시를 추천한다.
+    call_taxi_wait_threshold_sec = 900
+
     def __init__(
         self,
         provider: RouteProvider,
@@ -86,6 +90,19 @@ class RouteService:
             status = SearchStatus.SUCCESS
             fallbacks: list[RouteMode] = []
             notices: list[Notice] = []
+            if (
+                request.mode == RouteMode.TRANSIT
+                and profile.preferences.low_floor_bus_required
+            ):
+                recommendation = await self._call_taxi_recommendation(
+                    request, profile, routes[0], requested_at
+                )
+                if recommendation is not None:
+                    notices.append(recommendation)
+                    fallbacks.append(RouteMode.TAXI)
+                    routes[0] = routes[0].model_copy(
+                        update={"warnings": [recommendation, *routes[0].warnings]}
+                    )
         else:
             status = SearchStatus.NO_ACCESSIBLE_ROUTE
             fallbacks = [RouteMode.TAXI] if request.mode == RouteMode.TRANSIT else []
@@ -120,6 +137,68 @@ class RouteService:
             notices=notices,
         )
         return response
+
+    async def _call_taxi_recommendation(
+        self,
+        request: RouteSearchRequest,
+        profile: UserProfile,
+        best_route: Route,
+        requested_at: datetime,
+    ) -> Notice | None:
+        """저상버스 대기가 길고 장애인 콜택시가 더 빠르면 추천 안내를 만든다."""
+        wait_sec = self._max_bus_wait_sec(best_route, requested_at)
+        if wait_sec < self.call_taxi_wait_threshold_sec:
+            return None
+        taxi_request = RouteSearchRequest(
+            origin=request.origin,
+            destination=request.destination,
+            mode=RouteMode.TAXI,
+            departure_at=request.departure_at,
+        )
+        try:
+            candidates = await self.provider.search(taxi_request)
+        except ApiError:
+            return None
+        if not candidates:
+            return None
+        context = await self.accessibility.get_context(candidates)
+        taxi_routes = self.engine.personalize_routes(
+            candidates, profile, context, requested_at
+        )
+        if not taxi_routes:
+            return None
+        taxi_sec = taxi_routes[0].summary.personalized_duration_sec
+        transit_sec = best_route.summary.personalized_duration_sec
+        if taxi_sec >= transit_sec:
+            return None
+        wait_min = ceil(wait_sec / 60)
+        taxi_min = ceil(taxi_sec / 60)
+        saved_min = ceil((transit_sec - taxi_sec) / 60)
+        return Notice(
+            code="CALL_TAXI_RECOMMENDED",
+            severity="INFO",
+            message=(
+                f"다음 저상버스까지 약 {wait_min}분 대기가 필요합니다. "
+                f"장애인 콜택시 이용 시 약 {taxi_min}분 소요되어 "
+                f"약 {saved_min}분 빠릅니다."
+            ),
+        )
+
+    @staticmethod
+    def _max_bus_wait_sec(route: Route, requested_at: datetime) -> float:
+        """개인화된 이동 타임라인 기준으로 버스 승차 전 최대 대기시간을 구한다."""
+        cursor = requested_at
+        max_wait = 0.0
+        for leg in route.legs:
+            if leg.mode in {"BUS", "SUBWAY"}:
+                if leg.departure_at is not None:
+                    wait = (leg.departure_at - cursor).total_seconds()
+                    if leg.mode == "BUS":
+                        max_wait = max(max_wait, wait)
+                    cursor = max(cursor, leg.arrival_at)
+            else:
+                cursor += timedelta(seconds=leg.personalized_duration_sec)
+        return max(0.0, max_wait)
 
     def get_stored_route(self, route_id: str) -> StoredRoute:
         result = self.store.get(route_id)

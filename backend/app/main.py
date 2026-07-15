@@ -37,6 +37,7 @@ from app.providers.mock import MockRouteProvider
 from app.providers.seoul import SeoulDataClient
 from app.providers.seoul_bus import SeoulBusClient
 from app.providers.tmap import TmapRouteProvider
+from app.providers.walkway import MockWalkwaySource
 from app.services import RouteService, StoredRoute
 from app.storage import MemoryTTLStore
 
@@ -104,6 +105,10 @@ def build_container(settings: Settings) -> ApplicationContainer:
             seoul=seoul,
             bus=bus,
             use_synthetic_bus=settings.route_provider == "mock",
+            # 데모용 목업: 경사 세그먼트와 저상버스 도착정보를 SYNTHETIC_FIXTURE로
+            # 제공한다. 실데이터 어댑터가 준비되면 제거한다.
+            walkway=MockWalkwaySource(),
+            synthetic_bus_fallback=True,
         ),
         engine=BaselinePersonalizationEngine(),
         store=MemoryTTLStore[StoredRoute](),

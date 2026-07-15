@@ -1,3 +1,4 @@
+import hashlib
 from collections.abc import Callable
 from datetime import datetime, timedelta
 
@@ -33,12 +34,15 @@ class HybridAccessibilityProvider:
         clock: Callable[[], datetime] | None = None,
         use_synthetic_bus: bool = True,
         walkway: WalkwaySource | None = None,
+        synthetic_bus_fallback: bool = False,
     ) -> None:
         self.seoul = seoul
         self.bus = bus
         self.clock = clock or (lambda: datetime.now().astimezone())
         self.use_synthetic_bus = use_synthetic_bus
         self.walkway = walkway or UnknownWalkwaySource()
+        # 실시간 버스 도착을 얻지 못했을 때 데모용 목업 도착정보를 만들지 여부.
+        self.synthetic_bus_fallback = synthetic_bus_fallback
 
     async def get_context(self, routes: list[ProviderRoute]) -> AccessibilityContext:
         walk = {}
@@ -78,6 +82,8 @@ class HybridAccessibilityProvider:
         self, route_name: str, boarding_stop: PlaceInput
     ) -> BusAccessibility:
         if self.bus is None:
+            if self.synthetic_bus_fallback:
+                return self._synthetic_bus(route_name)
             if not self.use_synthetic_bus:
                 return BusAccessibility(
                     low_floor_status=LowFloorStatus.UNKNOWN,
@@ -94,6 +100,8 @@ class HybridAccessibilityProvider:
         except ApiError:
             arrivals = []
         if not arrivals:
+            if self.synthetic_bus_fallback:
+                return self._synthetic_bus(route_name)
             return BusAccessibility(
                 low_floor_status=LowFloorStatus.UNKNOWN,
                 confidence=DataConfidence.UNKNOWN,
@@ -119,6 +127,32 @@ class HybridAccessibilityProvider:
             low_floor_status=status,
             confidence=DataConfidence.VERIFIED,
             source=DataSource.SEOUL_OPEN_DATA,
+            departures=departures,
+        )
+
+    def _synthetic_bus(self, route_name: str) -> BusAccessibility:
+        """데모용 목업 저상버스 도착정보. 노선명 기반 결정론적 값이며
+        SYNTHETIC_FIXTURE로 표시된다. 실제 도착정보를 얻으면 사용되지 않는다."""
+        seed = int(hashlib.sha256(route_name.encode("utf-8")).hexdigest()[:8], 16)
+        # 다음 저상버스 대기 4~23분: 일부 노선은 대기가 길어 콜택시 추천이 발동된다.
+        first_wait_sec = (4 + seed % 20) * 60
+        now = self.clock()
+        departures = (
+            RealtimeDeparture(
+                departure_at=now + timedelta(seconds=first_wait_sec),
+                low_floor_status=LowFloorStatus.CONFIRMED,
+                vehicle_id=f"mock-{seed % 1000}",
+            ),
+            RealtimeDeparture(
+                departure_at=now + timedelta(seconds=first_wait_sec + 720),
+                low_floor_status=LowFloorStatus.CONFIRMED,
+                vehicle_id=f"mock-{seed % 1000 + 1}",
+            ),
+        )
+        return BusAccessibility(
+            low_floor_status=LowFloorStatus.CONFIRMED,
+            confidence=DataConfidence.ESTIMATED,
+            source=DataSource.SYNTHETIC_FIXTURE,
             departures=departures,
         )
 
