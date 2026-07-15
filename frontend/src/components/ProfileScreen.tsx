@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Check, Info, ShieldAlert, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Info, LogOut, ShieldAlert } from "lucide-react";
 import { UserProfile, CHAR_OPTIONS, DEVICE_OPTIONS } from "../types";
 
 interface ProfileScreenProps {
@@ -97,13 +97,13 @@ export function ProfileScreen({
     }
   };
 
-  const handleDelete = () => {
-    if (confirm("정말로 회원을 탈퇴하시겠습니까? 프로필, 계정 및 저장된 평균 보행 속도 학습 정보가 전량 즉시 파기되며 복구가 불가능합니다.")) {
+  const handleLogout = () => {
+    if (confirm("로그아웃 하시겠습니까? 이 기기의 로그인 정보가 삭제됩니다.")) {
       try {
-        showToast("데모 계정은 탈퇴할 수 없어 현재 로그인 정보만 삭제합니다.");
+        showToast("로그아웃되었습니다.");
         if (onDeleteAccount) onDeleteAccount();
       } catch (err) {
-        showToast("탈퇴 처리 중 실패했습니다.");
+        showToast("로그아웃 처리 중 실패했습니다.");
       }
     }
   };
@@ -147,11 +147,11 @@ export function ProfileScreen({
 
         {isEditMode && (
           <button
-            onClick={handleDelete}
-            className="text-red-500 hover:text-red-600 flex items-center gap-1.5 text-[12px] font-bold py-1 px-2.5 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-100 transition-all cursor-pointer"
+            onClick={handleLogout}
+            className="text-slate-500 hover:text-slate-700 flex items-center gap-1.5 text-[12px] font-bold py-1 px-2.5 rounded-lg hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all cursor-pointer"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            회원 탈퇴
+            <LogOut className="w-3.5 h-3.5" />
+            로그아웃
           </button>
         )}
       </div>
