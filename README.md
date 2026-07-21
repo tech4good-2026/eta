@@ -74,6 +74,8 @@ flowchart LR
 
 ## 시스템 구성
 
+![아키텍처 — React 클라이언트, FastAPI, 외부 API 어댑터, 개인화 ETA 엔진](docs/assets/architecture.svg)
+
 ```text
 React + Vite
   -> FastAPI /api/v1
