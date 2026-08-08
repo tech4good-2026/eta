@@ -1,4 +1,6 @@
+import asyncio
 from datetime import datetime
+from time import monotonic
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -227,3 +229,138 @@ async def test_live_mode_without_bus_key_does_not_claim_synthetic_low_floor_bus(
     assert context.bus["bus-leg"].low_floor_status == LowFloorStatus.UNKNOWN
     assert context.bus["bus-leg"].confidence == DataConfidence.UNKNOWN
     assert context.bus["bus-leg"].source == DataSource.UNKNOWN
+
+
+# ── 여기서부터: 외부를 "차례로" 묻지 않는다는 것을 고정한다 ──────────────────
+#
+# 구간끼리는 서로 필요로 하는 게 없다. 그런데도 차례로 기다리면 응답 시간이
+# 호출들의 합이 된다. 아래 세 가지가 그 성질을 지킨다.
+
+
+def _station(name: str, lat: float, lon: float) -> PlaceInput:
+    return PlaceInput(name=name, coordinate=Coordinate(latitude=lat, longitude=lon))
+
+
+def _subway_leg(leg_id: str, start: PlaceInput, end: PlaceInput) -> ProviderLeg:
+    return ProviderLeg(
+        provider_leg_id=leg_id,
+        mode=LegMode.SUBWAY,
+        start=start,
+        end=end,
+        distance_m=3000,
+        duration_sec=600,
+        geometry=[[start.coordinate.longitude, start.coordinate.latitude],
+                  [end.coordinate.longitude, end.coordinate.latitude]],
+        line_id="SUBWAY_LINE_1",
+        line_name="1호선",
+        departure_at=datetime(2026, 7, 15, 14, 0, tzinfo=ZoneInfo("Asia/Seoul")),
+        arrival_at=datetime(2026, 7, 15, 14, 10, tzinfo=ZoneInfo("Asia/Seoul")),
+    )
+
+
+def _route(route_id: str, legs: list[ProviderLeg]) -> ProviderRoute:
+    return ProviderRoute(
+        provider_route_id=route_id,
+        mode=RouteMode.TRANSIT,
+        title="지하철 경로",
+        standard_duration_sec=600,
+        total_distance_m=3000,
+        walk_distance_m=0,
+        transfer_count=max(0, len(legs) - 1),
+        fare_krw=1500,
+        legs=legs,
+    )
+
+
+class SlowSeoulClient:
+    """호출 하나마다 정해진 시간을 쓰고, 몇 번 불렸는지 센다."""
+
+    def __init__(self, delay_sec: float) -> None:
+        self.delay_sec = delay_sec
+        self.elevator_calls: list[str] = []
+        self.arrival_calls: list[str] = []
+
+    async def get_elevator(self, station_name: str):
+        self.elevator_calls.append(station_name)
+        await asyncio.sleep(self.delay_sec)
+        return SeoulElevator(
+            status=FacilityStatus.AVAILABLE,
+            location_description="엘리베이터",
+            confidence=DataConfidence.VERIFIED,
+        )
+
+    async def get_subway_arrivals(self, station_name: str, _line_name: str):
+        self.arrival_calls.append(station_name)
+        await asyncio.sleep(self.delay_sec)
+        return []
+
+
+@pytest.mark.asyncio
+async def test_legs_are_asked_together_so_latency_does_not_add_up() -> None:
+    """구간 4개짜리 경로. 차례로 물으면 지연이 쌓이고, 같이 물으면 안 쌓인다."""
+    delay = 0.05
+    seoul = SlowSeoulClient(delay)
+    legs = [
+        _subway_leg(
+            f"leg-{i}",
+            _station(f"역{i}", 37.5 + i / 100, 127.0 + i / 100),
+            _station(f"역{i + 1}", 37.5 + (i + 1) / 100, 127.0 + (i + 1) / 100),
+        )
+        for i in range(4)
+    ]
+
+    started = monotonic()
+    context = await HybridAccessibilityProvider(seoul).get_context([_route("r", legs)])
+    elapsed = monotonic() - started
+
+    assert len(context.subway) == 4
+    # 구간 4개 × 구간당 독립 호출 5개 = 차례로면 20단계(1.0초 이상).
+    # 같이 물으면 한 단계로 끝난다. 넉넉히 잡아도 절반을 넘지 않아야 한다.
+    assert elapsed < delay * 10, f"{elapsed:.3f}s — 아직 차례로 기다리고 있다"
+
+
+@pytest.mark.asyncio
+async def test_same_station_shared_by_route_candidates_is_asked_once() -> None:
+    """경로 후보가 여러 개여도 같은 구간을 두 번 묻지 않는다."""
+    seoul = SlowSeoulClient(0.0)
+    start, end = _station("탑승역", 37.5, 127.0), _station("하차역", 37.51, 127.01)
+    routes = [
+        _route("candidate-1", [_subway_leg("a", start, end)]),
+        _route("candidate-2", [_subway_leg("b", start, end)]),
+        _route("candidate-3", [_subway_leg("c", start, end)]),
+    ]
+
+    context = await HybridAccessibilityProvider(seoul).get_context(routes)
+
+    assert len(context.subway) == 3, "구간마다 답은 다 채워져야 한다"
+    assert seoul.arrival_calls == ["탑승역"], "같은 구간을 세 번 물었다"
+    assert sorted(set(seoul.elevator_calls)) == ["탑승역", "하차역"]
+    assert len(seoul.elevator_calls) == 2, "같은 역을 여러 번 물었다"
+
+
+class HangingSeoulClient:
+    """영영 답하지 않는 외부. 실제로 종종 이렇게 된다."""
+
+    async def get_elevator(self, _station_name: str):
+        await asyncio.sleep(3600)
+
+    async def get_subway_arrivals(self, _station_name: str, _line_name: str):
+        await asyncio.sleep(3600)
+
+
+@pytest.mark.asyncio
+async def test_slow_provider_degrades_to_unknown_instead_of_blocking() -> None:
+    """늦은 것과 못 받은 것을 같게 다룬다 — 둘 다 '확인 안 됨'이다."""
+    start, end = _station("탑승역", 37.5, 127.0), _station("하차역", 37.51, 127.01)
+    route = _route("r", [_subway_leg("subway-leg", start, end)])
+
+    started = monotonic()
+    context = await HybridAccessibilityProvider(
+        HangingSeoulClient(), provider_timeout_sec=0.05
+    ).get_context([route])
+    elapsed = monotonic() - started
+
+    subway = context.subway["subway-leg"]
+    assert subway.elevator_status == FacilityStatus.UNKNOWN
+    assert subway.confidence == DataConfidence.UNKNOWN
+    assert elapsed < 1.0, f"{elapsed:.3f}s — 응답이 외부에 붙들렸다"
