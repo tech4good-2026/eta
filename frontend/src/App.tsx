@@ -385,14 +385,14 @@ export default function App() {
 
         {/* Offline Banner indicator (Section 6 & 11) */}
         {isOffline && (
-          <div className="bg-red-500 text-white text-[11px] font-black px-4 py-2 flex items-center justify-between z-50 shrink-0">
-            <span className="flex items-center gap-1.5 animate-pulse">
+          <div className="bg-red-500 text-white text-sm font-bold px-4 py-2 flex items-center justify-between z-50 shrink-0">
+            <span className="flex items-center gap-1.5">
               <WifiOff className="w-3.5 h-3.5" />
               오프라인 모드 활성화됨. 새로운 검색 및 경로 재탐색이 중단됩니다.
             </span>
             <button
               onClick={handleToggleOffline}
-              className="bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[10px] uppercase font-bold"
+              className="bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-xs uppercase font-bold"
             >
               연결
             </button>
@@ -401,7 +401,7 @@ export default function App() {
 
         {/* Global Network Fail Simulation bar */}
         {hasNetworkError && (
-          <div className="bg-amber-600 text-white text-[11px] font-black px-4 py-2 flex items-center justify-between z-50 shrink-0">
+          <div className="bg-amber-600 text-white text-sm font-bold px-4 py-2 flex items-center justify-between z-50 shrink-0">
             <span className="flex items-center gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5" />
               현재 경로 정보를 불러오지 못했습니다.
@@ -411,7 +411,7 @@ export default function App() {
                 setHasNetworkError(false);
                 if (origin && destination) handleQueryRoutes(mode, origin, destination);
               }}
-              className="bg-white text-amber-700 font-black px-2.5 py-0.5 rounded-md text-[10px]"
+              className="bg-white text-amber-700 font-bold px-2.5 py-0.5 rounded-md text-xs"
             >
               재시도
             </button>
@@ -444,14 +444,14 @@ export default function App() {
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[14px] font-black text-slate-800 truncate max-w-[130px]">
+                    <span className="text-[14px] font-bold text-slate-800 truncate max-w-[130px]">
                       {userEmail.split("@")[0]} 님
                     </span>
-                    <span className="bg-blue-50 text-blue-600 font-extrabold px-1.5 py-0.2 rounded text-[9.5px]">
+                    <span className="bg-blue-50 text-blue-600 font-bold px-1.5 py-0.2 rounded text-xs">
                       {profile.walkingSpeedSource === "LEARNED" ? "학습형속도" : "기준속도"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-bold mt-0.5">
+                  <div className="flex items-center gap-1.5 text-sm text-slate-500 font-bold mt-0.5">
                     <span>보행속도: {profile.walkingSpeedMps}m/s</span>
                     <span>({Math.round(speedRatio * 100)}%)</span>
                   </div>
@@ -507,13 +507,13 @@ export default function App() {
                   className="w-full text-left bg-white p-3.5 rounded-[18px] border border-slate-200 shadow-md flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-all"
                 >
                   <Search className="w-5 h-5 text-slate-400" />
-                  <span className="text-[13.5px] font-bold text-slate-400">
+                  <span className="text-base font-bold text-slate-400">
                     {destination ? destination.name : "어디로 안전하게 우회하여 이동할까요?"}
                   </span>
                 </button>
 
                 {origin && (
-                  <div className="bg-white/95 backdrop-blur px-3 py-2 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center text-[11.5px] font-bold text-slate-700">
+                  <div className="bg-white/95 backdrop-blur px-3 py-2 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center text-sm font-bold text-slate-700">
                     <span className="flex items-center gap-1.5 truncate">
                       <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                       출발: {origin.name}
@@ -532,23 +532,23 @@ export default function App() {
               <div className="absolute bottom-4 left-4 right-4 z-10 flex flex-col gap-2">
                 {geolocationStatus === "PROMPT" && (
                   <div className="bg-white/95 backdrop-blur p-3.5 rounded-[20px] border border-slate-200 shadow-md">
-                    <h4 className="text-[12.5px] font-black text-slate-800 flex items-center gap-1.5">
-                      <Locate className="w-4.5 h-4.5 text-blue-600 animate-pulse" />
+                    <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                      <Locate className="w-4.5 h-4.5 text-blue-600" />
                       안전한 ETA 이동을 위해 현위치를 켤까요?
                     </h4>
-                    <p className="text-[11px] text-slate-500 leading-normal mt-0.5">
+                    <p className="text-sm text-slate-500 leading-normal mt-0.5">
                       위치 권한 거부 시 현재 위치 좌표가 제한되며, 출발지와 목적지를 리스트에서 수동 지정해 안전 우회로를 찾을 수 있습니다.
                     </p>
                     <div className="flex gap-2 mt-2.5">
                       <button
                         onClick={handleRequestLocation}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] py-1.5 px-3 rounded-lg cursor-pointer transition-all"
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-1.5 px-3 rounded-lg cursor-pointer transition-all"
                       >
                         내 위치 자동 동의
                       </button>
                       <button
                         onClick={() => { setGeolocationStatus("DENIED"); showToast("수동 검색 탐색 모드로 고정합니다."); }}
-                        className="bg-slate-100 text-slate-700 font-bold text-[11px] py-1.5 px-3 rounded-lg cursor-pointer hover:bg-slate-200 transition-all"
+                        className="bg-slate-100 text-slate-700 font-bold text-sm py-1.5 px-3 rounded-lg cursor-pointer hover:bg-slate-200 transition-all"
                       >
                         동의 안 함 (수동 입력)
                       </button>
@@ -571,13 +571,13 @@ export default function App() {
 
             {/* Recents list and POIs area */}
             <div className="bg-white border-t border-slate-200 rounded-t-[28px] p-5 shrink-0 shadow">
-              <h3 className="text-[13.5px] font-black text-slate-900 mb-2.5 flex items-center gap-1.5">
+              <h3 className="text-base font-bold text-slate-900 mb-2.5 flex items-center gap-1.5">
                 <MapPinned className="w-4.5 h-4.5 text-blue-600" />
                 최근 카카오 장소 검색 결과
               </h3>
               <div className="space-y-2 max-h-[145px] overflow-y-auto custom-scrollbar">
                 {recentPlaces.length === 0 && (
-                  <div className="p-3 rounded-xl border border-dashed border-slate-200 text-center text-[11px] text-slate-400">
+                  <div className="p-3 rounded-xl border border-dashed border-slate-200 text-center text-sm text-slate-400">
                     목적지를 검색하면 최근 결과가 여기에 표시됩니다.
                   </div>
                 )}
@@ -589,12 +589,12 @@ export default function App() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-bold text-slate-800 truncate">{p.name}</span>
-                        <span className="bg-emerald-50 text-emerald-600 text-[9.5px] font-extrabold px-1.5 py-0.2 rounded-md">
+                        <span className="text-base font-bold text-slate-800 truncate">{p.name}</span>
+                        <span className="bg-emerald-50 text-emerald-600 text-xs font-bold px-1.5 py-0.2 rounded-md">
                           {p.category}
                         </span>
                       </div>
-                      <span className="text-[11px] text-slate-500 truncate block mt-0.5">{p.addr}</span>
+                      <span className="text-sm text-slate-500 truncate block mt-0.5">{p.addr}</span>
                     </div>
                     <ChevronRight className="w-4.5 h-4.5 text-slate-400 shrink-0 ml-2" />
                   </div>
@@ -622,7 +622,7 @@ export default function App() {
                   placeholder="2자 이상의 장소명 또는 주소를 검색하세요..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-[13.5px] pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-950 font-bold"
+                  className="w-full text-base pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-950 font-bold"
                 />
                 <Search className="w-4.5 h-4.5 text-slate-400 absolute left-3.5 top-3.2" />
               </div>
@@ -632,23 +632,23 @@ export default function App() {
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
               {searchQuery.trim().length < 2 ? (
                 <div className="text-center py-12 text-slate-400 space-y-1">
-                  <p className="text-[13px] font-bold">검색어를 입력해 주세요.</p>
-                  <p className="text-[11px]">검색 효율 향상을 위해 최소 2자 이상 입력이 필수로 통제됩니다.</p>
+                  <p className="text-base font-bold">검색어를 입력해 주세요.</p>
+                  <p className="text-sm">검색 효율 향상을 위해 최소 2자 이상 입력이 필수로 통제됩니다.</p>
                 </div>
               ) : isPlaceSearching ? (
                 <div className="text-center py-12 text-slate-400 space-y-1.5">
                   <RefreshCw className="w-5 h-5 animate-spin mx-auto text-blue-500" />
-                  <p className="text-[12px] font-bold">카카오 장소를 검색하고 있습니다.</p>
+                  <p className="text-xs font-bold">카카오 장소를 검색하고 있습니다.</p>
                 </div>
               ) : placeSearchError ? (
                 <div className="text-center py-12 text-amber-600 space-y-1.5">
-                  <p className="text-[13px] font-black">장소 검색 정보를 불러오지 못했습니다.</p>
-                  <p className="text-[11.5px]">카카오 JavaScript 키와 네트워크 상태를 확인해 주세요.</p>
+                  <p className="text-base font-bold">장소 검색 정보를 불러오지 못했습니다.</p>
+                  <p className="text-sm">카카오 JavaScript 키와 네트워크 상태를 확인해 주세요.</p>
                 </div>
               ) : placeResults.length === 0 ? (
                 <div className="text-center py-12 text-slate-400 space-y-1.5">
-                  <p className="text-[13px] font-black text-slate-600">검색 결과가 없습니다.</p>
-                  <p className="text-[11.5px] leading-relaxed">다른 장소명이나 주소를 입력해 주세요. (Section 6)</p>
+                  <p className="text-base font-bold text-slate-600">검색 결과가 없습니다.</p>
+                  <p className="text-sm leading-relaxed">다른 장소명이나 주소를 입력해 주세요. (Section 6)</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -661,14 +661,14 @@ export default function App() {
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-[13.5px] font-black text-slate-800 truncate">{p.name}</span>
-                          <span className="bg-slate-100 text-slate-600 font-bold text-[9.5px] px-1.5 py-0.2 rounded">
+                          <span className="text-base font-bold text-slate-800 truncate">{p.name}</span>
+                          <span className="bg-slate-100 text-slate-600 font-bold text-xs px-1.5 py-0.2 rounded">
                             {p.category}
                           </span>
                         </div>
-                        <p className="text-[11.5px] text-slate-500 truncate mt-0.5">{p.addr}</p>
+                        <p className="text-sm text-slate-500 truncate mt-0.5">{p.addr}</p>
                         {p.phone && p.phone !== "없음" && (
-                          <span className="text-[10px] text-slate-400 font-mono mt-1 block">전화: {p.phone}</span>
+                          <span className="text-xs text-slate-400 font-mono mt-1 block">전화: {p.phone}</span>
                         )}
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-400 mt-1 shrink-0 ml-2" />
@@ -690,7 +690,7 @@ export default function App() {
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <h2 className="text-[15px] font-black text-slate-800">장소 상세 분석</h2>
+              <h2 className="text-[15px] font-bold text-slate-800">장소 상세 분석</h2>
             </div>
 
             <div className="flex-1 relative">
@@ -704,17 +704,17 @@ export default function App() {
               <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur p-4.5 rounded-[22px] border border-slate-200 shadow-lg space-y-3 z-10">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-[16.5px] font-black text-slate-900 leading-none">{searchTarget.name}</h3>
-                    <span className="bg-blue-50 text-blue-600 font-extrabold text-[10px] px-2 py-0.5 rounded-md">
+                    <h3 className="text-[16.5px] font-bold text-slate-900 leading-none">{searchTarget.name}</h3>
+                    <span className="bg-blue-50 text-blue-600 font-bold text-xs px-2 py-0.5 rounded-md">
                       {searchTarget.category}
                     </span>
                   </div>
-                  <p className="text-[12px] text-slate-500 mt-1 leading-normal">{searchTarget.addr}</p>
+                  <p className="text-xs text-slate-500 mt-1 leading-normal">{searchTarget.addr}</p>
                 </div>
 
                 <div className="border-t border-slate-100 my-1"></div>
 
-                <div className="flex justify-between items-center text-[11px] text-slate-500 font-bold">
+                <div className="flex justify-between items-center text-sm text-slate-500 font-bold">
                   {searchTarget.phone && searchTarget.phone !== "없음" ? (
                     <span className="flex items-center gap-1.5">
                       <Phone className="w-3.5 h-3.5 text-blue-500 shrink-0" />
@@ -740,13 +740,13 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <button
                     onClick={() => handleSetPlace("origin")}
-                    className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-[12.5px] rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1"
+                    className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1"
                   >
                     출발지로 지정
                   </button>
                   <button
                     onClick={() => handleSetPlace("destination")}
-                    className="py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[12.5px] rounded-xl cursor-pointer shadow-sm transition-all flex items-center justify-center gap-1"
+                    className="py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl cursor-pointer shadow-sm transition-all flex items-center justify-center gap-1"
                   >
                     목적지로 지정
                   </button>
@@ -768,7 +768,7 @@ export default function App() {
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <div className="flex-1 flex items-center gap-2 text-[13px] font-bold text-slate-800 truncate">
+                <div className="flex-1 flex items-center gap-2 text-base font-bold text-slate-800 truncate">
                   <span className="truncate max-w-[130px]">{origin.name}</span>
                   <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 rotate-90 shrink-0" onClick={swapOD} />
                   <span className="truncate max-w-[130px]">{destination.name}</span>
@@ -781,7 +781,7 @@ export default function App() {
                   <button
                     key={m}
                     onClick={() => handleQueryRoutes(m)}
-                    className={`flex-1 py-2 rounded-lg font-black text-[12px] uppercase transition-all cursor-pointer ${
+                    className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase transition-all cursor-pointer ${
                       mode === m
                         ? "bg-white text-blue-600 shadow-sm"
                         : "text-slate-500 hover:text-slate-800"
@@ -798,7 +798,7 @@ export default function App() {
               {isLoading ? (
                 /* Beautiful accessible Loading skeleton list (Section 6) */
                 <div className="space-y-3 py-2">
-                  <div className="p-3 bg-white border border-slate-200 rounded-2xl animate-pulse space-y-2.5">
+                  <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-2.5">
                     <div className="h-4.5 bg-slate-200 rounded-md w-3/4"></div>
                     <div className="h-4 bg-slate-200 rounded-md w-1/2"></div>
                     <div className="flex gap-2 pt-1">
@@ -806,13 +806,13 @@ export default function App() {
                       <div className="h-5 bg-slate-200 rounded-full w-20"></div>
                     </div>
                   </div>
-                  <div className="p-3 bg-white border border-slate-200 rounded-2xl animate-pulse space-y-2.5">
+                  <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-2.5">
                     <div className="h-4.5 bg-slate-200 rounded-md w-2/3"></div>
                     <div className="h-4 bg-slate-200 rounded-md w-1/3"></div>
                   </div>
                   <button
                     onClick={() => setIsLoading(false)}
-                    className="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-xl text-[11px] font-bold cursor-pointer"
+                    className="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-xl text-sm font-bold cursor-pointer"
                   >
                     불러오기 중단 및 취소
                   </button>
@@ -826,15 +826,15 @@ export default function App() {
                       <div className="flex items-start gap-2 text-amber-800">
                         <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
                         <div>
-                          <h4 className="text-[13px] font-black">접근 가능한 대중교통 경로 없음</h4>
-                          <p className="text-[11px] leading-normal text-amber-700 mt-0.5">
+                          <h4 className="text-base font-bold">접근 가능한 대중교통 경로 없음</h4>
+                          <p className="text-sm leading-normal text-amber-700 mt-0.5">
                             현재 설정된 <b>신체 프로필</b> 및 <b>안전 옵션</b>(계단 회피, 엘리베이터 필수 등)을 완전히 충족하는 대중교통 경로 수립이 불가능합니다. (status=NO_ACCESSIBLE_ROUTE)
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={() => handleQueryRoutes("taxi")}
-                        className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-[11.5px] cursor-pointer"
+                        className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-sm cursor-pointer"
                       >
                         대체 보완수단인 장애인 콜택시 탭으로 강제 이동
                       </button>
@@ -861,16 +861,16 @@ export default function App() {
                       >
                         <div className="flex justify-between items-start gap-2">
                           <div className="space-y-1 min-w-0">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
                               옵션 {rIdx + 1}
                             </span>
-                            <h4 className="text-[13.5px] font-bold text-slate-800 truncate leading-tight">
+                            <h4 className="text-base font-bold text-slate-800 truncate leading-tight">
                               {route.label}
                             </h4>
                           </div>
 
                           {/* Dynamic Accessibility tags */}
-                          <span className={`text-[10px] font-black px-2 py-0.6 rounded shrink-0 ${
+                          <span className={`text-xs font-bold px-2 py-0.6 rounded shrink-0 ${
                             isAccessible
                               ? "bg-emerald-50 text-emerald-600"
                               : isCaution
@@ -882,19 +882,19 @@ export default function App() {
                         </div>
 
                         {/* Side-by-side Personalized Time / General Time Display (F-ROUTE-04) */}
-                        <div className="flex justify-between items-end bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <div className="flex justify-between items-end bg-blue-50/60 px-4 py-3 rounded-xl border border-blue-100">
                           <div>
-                            <span className="text-[9px] text-slate-400 font-extrabold block uppercase">일반 소요</span>
-                            <span className="text-[13.5px] font-mono font-bold text-slate-500">{route.general}분</span>
+                            <span className="text-xs text-slate-500 font-semibold block">일반 안내 기준</span>
+                            <span className="text-base font-mono font-semibold text-slate-500">{route.general}분</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-[9px] text-blue-500 font-extrabold block uppercase">개인화 템포 소요</span>
-                            <span className="text-[18px] font-mono font-black text-blue-600 leading-none">{route.personal}분</span>
+                            <span className="text-xs text-blue-600 font-semibold block">내 속도로는</span>
+                            <span className="text-[28px] font-mono font-bold text-blue-600 leading-none">{route.personal}분</span>
                           </div>
                         </div>
 
                         {/* Path meta: Fare, transfers, walk distance */}
-                        <div className="flex justify-between items-center text-[11px] font-bold text-slate-500">
+                        <div className="flex justify-between items-center text-sm font-bold text-slate-500">
                           <span className="flex items-center gap-1.5">
                             {route.mode === "transit" && <Train className="w-3.5 h-3.5 text-slate-400" />}
                             환승 {route.transfers}회 • 보행거리 {route.walk}m
@@ -906,19 +906,23 @@ export default function App() {
 
                         {/* Critical warnings notice block */}
                         {route.notices.length > 0 && (
-                          <div className="space-y-1.5 pt-1 border-t border-slate-100">
-                            {route.notices.map((n, idx) => (
+                          <div className="space-y-2 pt-2 border-t border-slate-100">
+                            {/* 경고가 맨 위. 목록 끝에 묻히면 가장 중요한 정보가 가장 늦게 읽힌다 */}
+                            {route.notices.filter((n) => n.warn).map((n, idx) => (
+                              <div
+                                key={`w${idx}`}
+                                className="flex items-start gap-2 text-sm leading-relaxed font-semibold text-red-700 bg-red-50 rounded-lg px-3 py-2"
+                              >
+                                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                                <span>{n.text}</span>
+                              </div>
+                            ))}
+                            {route.notices.filter((n) => !n.warn).map((n, idx) => (
                               <div
                                 key={idx}
-                                className={`flex items-start gap-1.5 text-[10.5px] leading-relaxed ${
-                                  n.warn ? "text-red-500 font-extrabold" : "text-slate-500 font-medium"
-                                }`}
+                                className="flex items-start gap-2 text-sm leading-relaxed text-slate-600"
                               >
-                                {n.warn ? (
-                                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500 animate-pulse" />
-                                ) : (
-                                  <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
-                                )}
+                                <Info className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
                                 <span>{n.text}</span>
                               </div>
                             ))}
@@ -944,9 +948,9 @@ export default function App() {
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <h2 className="text-[14.5px] font-black text-slate-800">우회 경로 입체 상세</h2>
+                <h2 className="text-[14.5px] font-bold text-slate-800">경로 상세</h2>
               </div>
-              <span className={`text-[10px] font-black px-2 py-0.6 rounded ${
+              <span className={`text-xs font-bold px-2 py-0.6 rounded ${
                 selectedRoute.accessibilityStatus === "ACCESSIBLE"
                   ? "bg-emerald-50 text-emerald-600"
                   : selectedRoute.accessibilityStatus === "CAUTION"
@@ -1002,28 +1006,28 @@ export default function App() {
 
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex justify-between items-start gap-2">
-                          <h4 className="text-[13px] font-black text-slate-800 leading-tight">
+                          <h4 className="text-base font-bold text-slate-800 leading-tight">
                             {seg.title}
                           </h4>
-                          <span className="text-[12px] font-mono font-bold text-slate-500 shrink-0">
+                          <span className="text-xs font-mono font-bold text-slate-500 shrink-0">
                             {seg.time}
                           </span>
                         </div>
 
-                        <p className="text-[11.5px] text-slate-500 leading-relaxed">
+                        <p className="text-sm text-slate-500 leading-relaxed">
                           {seg.desc}
                         </p>
 
                         <div className="flex flex-wrap gap-1 pt-1">
                           {seg.tags?.map((t, tIdx) => (
-                            <span key={tIdx} className="bg-slate-50 border border-slate-150 text-slate-600 text-[9.5px] font-bold px-1.5 py-0.2 rounded-md">
+                            <span key={tIdx} className="bg-slate-50 border border-slate-150 text-slate-600 text-xs font-bold px-1.5 py-0.2 rounded-md">
                               {t}
                             </span>
                           ))}
 
                           {/* Render facility UNKNOWN warning badge explicitly (F-ROUTE-05 / Section 6) */}
                           {seg.facilityStatus === "UNKNOWN" && (
-                            <span className="bg-amber-100 border border-amber-200 text-amber-700 font-extrabold text-[9.5px] px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
+                            <span className="bg-amber-100 border border-amber-200 text-amber-700 font-bold text-xs px-1.5 py-0.2 rounded-md flex items-center gap-0.5">
                               <AlertTriangle className="w-3 h-3 text-amber-600" />
                               시설미확인(UNKNOWN)
                             </span>
@@ -1041,10 +1045,10 @@ export default function App() {
               <button
                 onClick={() => void handleStartNavigation()}
                 disabled={isLoading}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-[13.5px] rounded-full shadow-md flex items-center justify-center gap-1.5 cursor-pointer transform active:scale-95 transition-all"
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-full shadow-md flex items-center justify-center gap-1.5 cursor-pointer transform active:scale-95 transition-all"
               >
                 <Navigation className="w-4 h-4 text-white rotate-45" />
-                ETA 맞춤형 리스크 안내 시작
+                내 속도로 안내 시작
               </button>
             </div>
           </div>
@@ -1104,7 +1108,7 @@ export default function App() {
 
         {/* Floating toast notification wrapper */}
         {toastVisible && (
-          <div className="absolute top-5 left-6 right-6 bg-slate-900/95 backdrop-blur text-white py-3 px-4 rounded-xl text-[12.5px] font-black z-50 shadow-xl border border-slate-700/50 flex items-center gap-2 animate-fade-in">
+          <div className="absolute top-5 left-6 right-6 bg-slate-900/95 backdrop-blur text-white py-3 px-4 rounded-xl text-sm font-bold z-50 shadow-xl border border-slate-700/50 flex items-center gap-2 animate-fade-in">
             <ShieldCheck className="w-4.5 h-4.5 text-blue-400 shrink-0" />
             <span className="leading-snug">{toastMessage}</span>
           </div>

@@ -130,7 +130,7 @@ export function NavigationScreen({
     setNavIndex(0);
     setRerouteSuggestion(null);
     onRouteChange(nextSession, nextRoute);
-    showToast(`새 안전 경로 갱신 완료(routeRevision=${nextSession.routeRevision})`);
+    showToast("새 경로로 안내를 이어갑니다.");
   };
 
   const reroute = async (reason: ApiRerouteReason, station?: Place) => {
@@ -171,7 +171,7 @@ export function NavigationScreen({
 
   const handleStationSnap = async (station: Place) => {
     setCurrentStation(station);
-    setGpsIndicator(`지하 역사 보완 수동 연동: [${station.name}] 잠금 고정됨`);
+    setGpsIndicator(`지금 위치를 ${station.name}으로 맞췄습니다`);
     await reroute("USER_REQUEST", station);
   };
 
@@ -184,7 +184,7 @@ export function NavigationScreen({
       const firstTime = Math.max(Date.now(), previousTime + 5000);
       const coordinate = createDemoOffRouteCoordinate(route.mapPoints, origin);
       const first = await sendPosition({ coordinate, recordedAt: new Date(firstTime).toISOString(), accuracyM: 5 });
-      setGpsIndicator("가상 이탈 1차 위치 전송 완료 · 5초 후 재확인");
+      setGpsIndicator("경로에서 벗어났습니다 · 새 경로를 찾는 중");
       if (first.status !== "REROUTE_SUGGESTED") {
         await delay(5000);
         const second = await sendPosition({
@@ -214,12 +214,12 @@ export function NavigationScreen({
     <div className="flex-1 min-h-0 flex flex-col" id="view-navigation-screen">
       <div className="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-          <span className="text-[12px] font-black text-emerald-400">STATUS: {session.status}</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <span className="text-sm font-bold text-emerald-400">안내 중</span>
         </div>
-        <div className="flex items-center gap-3 text-[11px] font-mono font-bold text-slate-400">
-          <span>경로 개정: <b className="text-white">v{session.routeRevision}</b></span>
-          <span>남은 맞춤시간: <b className="text-emerald-400">{route.personal}분</b></span>
+        <div className="flex items-center gap-3 text-sm font-mono font-bold text-slate-400">
+          
+          <span>내 속도로 남은 시간 <b className="text-emerald-400 text-base">{route.personal}분</b></span>
         </div>
       </div>
 
@@ -244,7 +244,7 @@ export function NavigationScreen({
         {routeModes.length > 0 && (
           <div className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur rounded-lg shadow border border-slate-200 px-2 py-1.5 flex flex-col gap-1">
             {routeModes.map((mode) => (
-              <div key={mode} className="flex items-center gap-1.5 text-[9.5px] font-bold text-slate-600">
+              <div key={mode} className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
                 <span className="w-4 h-[3px] rounded-full shrink-0" style={{ backgroundColor: MODE_META[mode].line }}></span>
                 {MODE_META[mode].label}
               </div>
@@ -252,21 +252,21 @@ export function NavigationScreen({
           </div>
         )}
 
-        <div className="absolute bottom-3 left-4 right-4 bg-slate-950/80 backdrop-blur px-3 py-1.5 rounded-lg text-[10.5px] font-mono font-bold text-slate-200 z-10 flex items-center justify-between shadow">
+        <div className="absolute bottom-3 left-4 right-4 bg-slate-950/80 backdrop-blur px-3 py-1.5 rounded-lg text-sm font-mono font-bold text-slate-200 z-10 flex items-center justify-between shadow">
           <span className="flex items-center gap-1.5 truncate">
             <span className={`w-2 h-2 rounded-full ${gpsPulse ? "bg-amber-400 scale-125" : "bg-emerald-400"} transition-all`}></span>
             {gpsIndicator}
           </span>
-          <span className="text-blue-400 text-[9.5px]">GPS 5s</span>
+          <span className="text-blue-400 text-xs">GPS 5s</span>
         </div>
 
         <button
           onClick={() => void triggerMockDeviation()}
           disabled={busy}
-          className="absolute top-3 right-3 bg-white/90 backdrop-blur p-2 rounded-xl shadow border border-slate-200 text-slate-700 text-[10.5px] font-bold hover:bg-slate-100 disabled:opacity-50 transition-all z-10 flex items-center gap-1 cursor-pointer"
+          className="absolute top-3 right-3 bg-white/90 backdrop-blur p-2 rounded-xl shadow border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-100 disabled:opacity-50 transition-all z-10 flex items-center gap-1 cursor-pointer"
         >
-          <Layers className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-          가상 이탈(Reroute)
+          <Layers className="w-3.5 h-3.5 text-blue-600" />
+          경로 이탈 체험
         </button>
       </div>
 
@@ -275,47 +275,47 @@ export function NavigationScreen({
           <div className="flex justify-between items-start mb-1.5">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                <span className="text-xs font-bold uppercase tracking-widest opacity-80">
                   전체 경로 {navSteps.length}개 구간 ({navIndex + 1} / {navSteps.length})
                 </span>
                 {currentStep && (
-                  <span className="inline-flex items-center gap-1 bg-white/20 text-white font-bold px-1.5 py-0.5 rounded text-[10px]">
+                  <span className="inline-flex items-center gap-1 bg-white/20 text-white font-bold px-1.5 py-0.5 rounded text-xs">
                     {React.createElement(MODE_META[currentStep.mode].Icon, { className: "w-3 h-3" })}
                     {MODE_META[currentStep.mode].label}
                   </span>
                 )}
               </div>
-              <h3 className="text-[17px] font-black tracking-tight mt-0.5">
+              <h3 className="text-[17px] font-bold tracking-tight mt-0.5">
                 {currentStep?.title || "최종 목적지에 거의 도착했습니다."}
               </h3>
             </div>
             {currentStep?.time && (
               <div className="text-right">
-                <span className="text-[20px] font-mono font-black leading-none block text-amber-300">{currentStep.time}</span>
-                <span className="text-[9.5px] opacity-75">구간 시간</span>
+                <span className="text-[20px] font-mono font-bold leading-none block text-amber-300">{currentStep.time}</span>
+                <span className="text-xs opacity-75">구간 시간</span>
               </div>
             )}
           </div>
-          <p className="text-[13px] opacity-90 leading-relaxed">{currentStep?.desc}</p>
+          <p className="text-base opacity-90 leading-relaxed">{currentStep?.desc}</p>
         </div>
 
         {rerouteSuggestion && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 shrink-0 flex items-start gap-3 animate-fade-in">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
-              <h4 className="text-[12.5px] font-black text-amber-800">⚠️ 경로 이탈 감지 (REROUTE_SUGGESTED)</h4>
-              <p className="text-[11px] text-amber-700 leading-normal mt-0.5">{rerouteSuggestion.message}</p>
+              <h4 className="text-sm font-bold text-amber-800">⚠️ 경로 이탈 감지 (REROUTE_SUGGESTED)</h4>
+              <p className="text-sm text-amber-700 leading-normal mt-0.5">{rerouteSuggestion.message}</p>
               <div className="flex gap-2.5 mt-2">
                 <button
                   onClick={() => void reroute(rerouteSuggestion.reason)}
                   disabled={busy}
-                  className="bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold py-1 px-3 rounded-md cursor-pointer shadow-sm transition-all disabled:opacity-50"
+                  className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold py-1 px-3 rounded-md cursor-pointer shadow-sm transition-all disabled:opacity-50"
                 >
                   새 경로 재탐색 승인
                 </button>
                 <button
                   onClick={() => setRerouteSuggestion(null)}
-                  className="text-amber-800 text-[11px] font-bold py-1 px-2.5 hover:bg-amber-100 rounded-md cursor-pointer transition-all"
+                  className="text-amber-800 text-sm font-bold py-1 px-2.5 hover:bg-amber-100 rounded-md cursor-pointer transition-all"
                 >
                   이탈 무시
                 </button>
@@ -324,19 +324,19 @@ export function NavigationScreen({
           </div>
         )}
 
-        <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 shrink-0 flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar">
-          <span className="text-[10.5px] font-bold text-slate-500 flex items-center gap-1 shrink-0">
-            <MapPin className="w-3.5 h-3.5 text-blue-600" />
-            지하 GPS 불통 보정역 지정:
+        <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 shrink-0 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <span className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
+            <MapPin className="w-4 h-4 shrink-0 text-blue-600" />
+            지하에서는 GPS가 끊깁니다 — 지금 있는 역을 눌러 주세요
           </span>
           <div className="flex gap-1.5 shrink-0 py-0.5">
-            {route.stationOptions.length === 0 && <span className="text-[10px] text-slate-400">해당 경로에 지하철역 없음</span>}
+            {route.stationOptions.length === 0 && <span className="text-xs text-slate-400">해당 경로에 지하철역 없음</span>}
             {route.stationOptions.map((station) => (
               <button
                 key={station.id}
                 onClick={() => void handleStationSnap(station)}
                 disabled={busy}
-                className={`text-[10px] font-bold px-2 py-0.8 rounded-md border transition-all cursor-pointer disabled:opacity-50 ${
+                className={`text-xs font-bold px-2 py-0.8 rounded-md border transition-all cursor-pointer disabled:opacity-50 ${
                   currentStation?.id === station.id
                     ? "bg-blue-600 text-white border-blue-600"
                     : "bg-white text-slate-600 border-slate-200 hover:border-blue-500"
@@ -369,13 +369,13 @@ export function NavigationScreen({
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className={`font-bold px-1.5 py-0.5 rounded text-[9px] shrink-0 ${meta.chip}`}>{meta.label}</span>
-                      <h4 className="text-[12.5px] font-bold text-slate-900 truncate">{step.title}</h4>
+                      <span className={`font-bold px-1.5 py-0.5 rounded text-xs shrink-0 ${meta.chip}`}>{meta.label}</span>
+                      <h4 className="text-sm font-bold text-slate-900 truncate">{step.title}</h4>
                     </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">{step.desc}</p>
+                    <p className="text-sm text-slate-500 truncate mt-0.5">{step.desc}</p>
                   </div>
                   {step.facilityStatus === "UNKNOWN" && (
-                    <span className="bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase shrink-0">UNKNOWN</span>
+                    <span className="bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded text-xs uppercase shrink-0">UNKNOWN</span>
                   )}
                 </div>
               );
@@ -388,7 +388,7 @@ export function NavigationScreen({
             <button
               onClick={() => void handleMissedTransit()}
               disabled={busy}
-              className="py-2.5 px-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-[12.5px] transition-all border border-red-100 cursor-pointer disabled:opacity-50"
+              className="py-2.5 px-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-sm transition-all border border-red-100 cursor-pointer disabled:opacity-50"
             >
               차량을 놓쳤어요
             </button>
@@ -396,7 +396,7 @@ export function NavigationScreen({
           <button
             onClick={() => void handleNextStep()}
             disabled={busy}
-            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-[13.5px] flex items-center justify-center gap-1.5 shadow-sm transform active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-base flex items-center justify-center gap-1.5 shadow-sm transform active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
             <span>{navIndex + 1 === navSteps.length ? "목적지 도착 완료" : "다음 구간 확인"}</span>
             <ChevronRight className="w-4 h-4" />
