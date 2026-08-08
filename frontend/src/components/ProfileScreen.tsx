@@ -140,7 +140,7 @@ export function ProfileScreen({
               <ArrowLeft className="w-4 h-4 text-slate-800" />
             </button>
           )}
-          <span className="text-[12.5px] font-bold text-slate-600">
+          <span className="text-sm font-bold text-slate-600">
             {isEditMode ? "프로필 수정" : `STEP 0${step} / 03`}
           </span>
         </div>
@@ -148,7 +148,7 @@ export function ProfileScreen({
         {isEditMode && (
           <button
             onClick={handleLogout}
-            className="text-slate-500 hover:text-slate-700 flex items-center gap-1.5 text-[12px] font-bold py-1 px-2.5 rounded-lg hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all cursor-pointer"
+            className="text-slate-500 hover:text-slate-700 flex items-center gap-1.5 text-xs font-bold py-1 px-2.5 rounded-lg hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             로그아웃
@@ -161,10 +161,10 @@ export function ProfileScreen({
         {(isEditMode ? step === 1 : step === 1) && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-[19.5px] font-black text-slate-900 leading-snug">
+              <h2 className="text-[19.5px] font-bold text-slate-900 leading-snug">
                 이동 시 해당하는 신체 특성이 있으신가요?
               </h2>
-              <p className="text-[12.5px] text-slate-500 mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 복수 선택이 가능합니다. 이 선택 정보는 사용자 속도를 조정하고 교통약자 맞춤 노선을 분석하는 핵심 정보가 됩니다.
               </p>
             </div>
@@ -182,14 +182,14 @@ export function ProfileScreen({
                         : "bg-white border-slate-200 text-slate-600 hover:border-blue-600"
                     }`}
                   >
-                    <span className="text-[13.5px]">{opt.label}</span>
+                    <span className="text-base">{opt.label}</span>
                     {isSelected && <Check className="w-4 h-4 text-blue-600 self-end" />}
                   </button>
                 );
               })}
             </div>
 
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[11.5px] text-blue-600 leading-relaxed flex items-start gap-2">
+            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-600 leading-relaxed flex items-start gap-2">
               <Info className="w-4 h-4 shrink-0 mt-0.5" />
               <span><b>알림:</b> 보조 기구 세부 설정(휠체어, 유모차 등)은 다음 장에서 이어집니다.</span>
             </div>
@@ -200,10 +200,10 @@ export function ProfileScreen({
         {step === 2 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-[19.5px] font-black text-slate-900 leading-snug">
+              <h2 className="text-[19.5px] font-bold text-slate-900 leading-snug">
                 현재 일상적으로 사용하는 보조기구가 있나요?
               </h2>
-              <p className="text-[12.5px] text-slate-500 mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 휠체어/유모차 등의 수단은 계단이나 극단적인 경사로, 지하철 리프트 탑승 필수 여부를 파악하는 기준이 됩니다.
               </p>
             </div>
@@ -215,7 +215,7 @@ export function ProfileScreen({
                   <button
                     key={opt.code}
                     onClick={() => toggleDevice(opt.code)}
-                    className={`py-2.5 px-4.5 rounded-full text-[13px] font-bold border-[1.5px] transition-all transform active:scale-95 cursor-pointer ${
+                    className={`py-2.5 px-4.5 rounded-full text-base font-bold border-[1.5px] transition-all transform active:scale-95 cursor-pointer ${
                       isSelected
                         ? "bg-blue-600 border-blue-600 text-white"
                         : "bg-white border-slate-200 text-slate-600 hover:border-blue-500"
@@ -227,7 +227,7 @@ export function ProfileScreen({
               })}
             </div>
 
-            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-[11.5px] text-amber-700 leading-relaxed flex items-start gap-2">
+            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-700 leading-relaxed flex items-start gap-2">
               <Info className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
                 <b>자동 분석 기능:</b> 휠체어나 유모차 선택 시, 다음 챕터의 계단 회피 및 엘리베이터 필수 옵션이 지능형 안전모드로 자동 켜집니다.
@@ -240,10 +240,10 @@ export function ProfileScreen({
         {step === 3 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-[19.5px] font-black text-slate-900 leading-snug">
+              <h2 className="text-[19.5px] font-bold text-slate-900 leading-snug">
                 상세 접근성 선호 조건을 설정하세요
               </h2>
-              <p className="text-[12.5px] text-slate-500 mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 사용자 선호도와 필수 규정에 의거하여 안전 노선을 선별하고 차트의 정렬 순서 우선순위를 결정합니다.
               </p>
             </div>
@@ -251,8 +251,8 @@ export function ProfileScreen({
             <div className="space-y-3 bg-white p-4 rounded-2xl border border-slate-200">
               <div className="flex items-center justify-between py-1.5">
                 <div>
-                  <h4 className="text-[13.5px] font-bold text-slate-900">계단 경로 회피</h4>
-                  <p className="text-[11px] text-slate-400">도보 안내 시 계단이 포함된 우회길 무조건 유도</p>
+                  <h4 className="text-base font-bold text-slate-900">계단 경로 회피</h4>
+                  <p className="text-sm text-slate-400">도보 안내 시 계단이 포함된 우회길 무조건 유도</p>
                 </div>
                 <input
                   type="checkbox"
@@ -266,8 +266,8 @@ export function ProfileScreen({
 
               <div className="flex items-center justify-between py-1.5">
                 <div>
-                  <h4 className="text-[13.5px] font-bold text-slate-900">지하철 엘리베이터 필수</h4>
-                  <p className="text-[11px] text-slate-400">환승 및 진출입 시 리프트 대신 엘리베이터 중심 안내</p>
+                  <h4 className="text-base font-bold text-slate-900">지하철 엘리베이터 필수</h4>
+                  <p className="text-sm text-slate-400">환승 및 진출입 시 리프트 대신 엘리베이터 중심 안내</p>
                 </div>
                 <input
                   type="checkbox"
@@ -281,8 +281,8 @@ export function ProfileScreen({
 
               <div className="flex items-center justify-between py-1.5">
                 <div>
-                  <h4 className="text-[13.5px] font-bold text-slate-900">저상 버스 필수 탑승</h4>
-                  <p className="text-[11px] text-slate-400">계단식 버스 제외 및 전 차량 슬로프 탑승 지원 버스</p>
+                  <h4 className="text-base font-bold text-slate-900">저상 버스 필수 탑승</h4>
+                  <p className="text-sm text-slate-400">계단식 버스 제외 및 전 차량 슬로프 탑승 지원 버스</p>
                 </div>
                 <input
                   type="checkbox"
@@ -296,8 +296,8 @@ export function ProfileScreen({
 
               <div className="flex items-center justify-between py-1.5">
                 <div>
-                  <h4 className="text-[13.5px] font-bold text-slate-900">급경사 구간 회피</h4>
-                  <p className="text-[11px] text-slate-400">휠체어 미끄러짐 방지를 위한 4도 초과 언덕길 회피</p>
+                  <h4 className="text-base font-bold text-slate-900">급경사 구간 회피</h4>
+                  <p className="text-sm text-slate-400">휠체어 미끄러짐 방지를 위한 4도 초과 언덕길 회피</p>
                 </div>
                 <input
                   type="checkbox"
@@ -308,7 +308,7 @@ export function ProfileScreen({
               </div>
             </div>
 
-            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-[11px] text-red-600 leading-relaxed flex items-start gap-1.5">
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600 leading-relaxed flex items-start gap-1.5">
               <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
                 <b>안전 보증 disclaimer:</b> 정보 미확인(`UNKNOWN`) 인프라의 가동 불가 우려 등으로 인해 안내 내용이 실시간 도로 상태와 완벽히 다를 수 있음을 주의바랍니다.

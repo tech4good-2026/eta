@@ -56,11 +56,11 @@ export function AuthScreen({ onAuthSuccess, showToast }: AuthScreenProps) {
           <Navigation className="w-[28px] h-[28px] text-white rotate-45" />
         </div>
 
-        <h1 className="text-[26px] font-black leading-[1.25] tracking-tight text-slate-900 mb-2">
+        <h1 className="text-[26px] font-bold leading-[1.25] tracking-tight text-slate-900 mb-2">
           당신의 보행 템포로<br />
           계산한 맞춤 경로
         </h1>
-        <p className="text-[13.5px] leading-relaxed text-slate-600 mb-6">
+        <p className="text-base leading-relaxed text-slate-600 mb-6">
           보행 가이드 <b>ETA</b>는 휠체어, 유모차, 고령자 등 신체 상태에 알맞게 소요시간을 보정하고 우회 안전 경로를 유도합니다.
         </p>
 
@@ -93,28 +93,28 @@ export function AuthScreen({ onAuthSuccess, showToast }: AuthScreenProps) {
 
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">이메일 계정</label>
+              <label className="block text-sm font-bold text-slate-500 mb-1">이메일 계정</label>
               <input
                 type="email"
                 placeholder="example@eta.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full text-[13.5px] px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-950"
+                className="w-full text-base px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-950"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">비밀번호 {!isLogin && "(최소 8자 이상)"}</label>
+              <label className="block text-sm font-bold text-slate-500 mb-1">비밀번호 {!isLogin && "(최소 8자 이상)"}</label>
               <input
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full text-[13.5px] px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-950"
+                className="w-full text-base px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-slate-950"
               />
             </div>
 
             {errorMsg && (
-              <div className="p-2.5 bg-red-50 border border-red-100 text-red-500 text-[11.5px] font-semibold rounded-lg flex items-start gap-1.5 leading-snug">
+              <div className="p-2.5 bg-red-50 border border-red-100 text-red-500 text-sm font-semibold rounded-lg flex items-start gap-1.5 leading-snug">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                 <span>{errorMsg}</span>
               </div>
@@ -129,14 +129,14 @@ export function AuthScreen({ onAuthSuccess, showToast }: AuthScreenProps) {
           </form>
         </div>
 
-        <div className="flex items-center gap-1.5 justify-center py-2 text-[12px] font-bold text-slate-500">
-          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[9.5px] font-mono">가상체험</span>
+        <div className="flex items-center gap-1.5 justify-center py-2 text-xs font-bold text-slate-500">
+          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-xs font-mono">가상체험</span>
           <span>아이디: <b className="text-slate-800">test@eta.com</b> / 비번: <b className="text-slate-800">password123</b></span>
         </div>
       </div>
 
       <div className="space-y-2 mt-4">
-        <div className="p-3 bg-slate-100 rounded-xl flex items-start gap-2 text-[11px] text-slate-500 leading-relaxed">
+        <div className="p-3 bg-slate-100 rounded-xl flex items-start gap-2 text-sm text-slate-500 leading-relaxed">
           <ShieldCheck className="w-4.5 h-4.5 text-blue-600 shrink-0 mt-0.5" />
           <span>
             <b>개인정보 원칙 보장:</b> ETA 서비스는 사용자가 안내를 위해 수집하는 어떠한 실시간 GPS 동선 데이터도 외부에 저장하거나 임의 가공하지 않습니다.

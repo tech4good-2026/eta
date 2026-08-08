@@ -134,7 +134,7 @@ export function KakaoMap({
       if (marker.type === "origin") {
         contentHtml = `
           <div class="pin origin select-none pointer-events-none flex flex-col items-center">
-            <div class="bg-[#2563EB] text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow mb-1 whitespace-nowrap">${marker.title || "출발지"}</div>
+            <div class="bg-[#2563EB] text-white text-xs font-bold px-1.5 py-0.5 rounded shadow mb-1 whitespace-nowrap">${marker.title || "출발지"}</div>
             <div class="pin-badge w-[30px] h-[30px] rounded-[50%_50%_50%_4px] rotate-45 flex items-center justify-center bg-[#2563EB] shadow-[0_1px_2px_rgba(15,23,42,.08)]">
               <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" class="-rotate-45 w-[14px] h-[14px]">
                 <circle cx="12" cy="12" r="3"/>
@@ -144,7 +144,7 @@ export function KakaoMap({
       } else if (marker.type === "dest") {
         contentHtml = `
           <div class="pin dest select-none pointer-events-none flex flex-col items-center">
-            <div class="bg-[#F97316] text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow mb-1 whitespace-nowrap">${marker.title || "목적지"}</div>
+            <div class="bg-[#F97316] text-white text-xs font-bold px-1.5 py-0.5 rounded shadow mb-1 whitespace-nowrap">${marker.title || "목적지"}</div>
             <div class="pin-badge w-[30px] h-[30px] rounded-[50%_50%_50%_4px] rotate-45 flex items-center justify-center bg-[#F97316] shadow-[0_1px_2px_rgba(15,23,42,.08)]">
               <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" class="-rotate-45 w-[14px] h-[14px]">
                 <path d="M12 21s-7-6.5-7-11.5A7 7 0 0119 9.5C19 14.5 12 21 12 21z"/>
@@ -154,13 +154,13 @@ export function KakaoMap({
       } else if (marker.type === "elevator") {
         contentHtml = `
           <div class="pin elevator select-none pointer-events-none flex flex-col items-center">
-            <div class="w-[24px] h-[24px] rounded-full bg-white border-2 border-emerald-500 flex items-center justify-center text-[9px] font-black text-emerald-600 shadow">EV</div>
-            <div class="bg-emerald-600 text-white text-[9px] font-bold px-1 py-0.5 rounded shadow mt-0.5 whitespace-nowrap">${marker.title || "엘리베이터"}</div>
+            <div class="w-[24px] h-[24px] rounded-full bg-white border-2 border-emerald-500 flex items-center justify-center text-xs font-bold text-emerald-600 shadow">EV</div>
+            <div class="bg-emerald-600 text-white text-xs font-bold px-1 py-0.5 rounded shadow mt-0.5 whitespace-nowrap">${marker.title || "엘리베이터"}</div>
           </div>`;
       } else if (marker.type === "you") {
         contentHtml = `
           <div class="pin you select-none pointer-events-none flex flex-col items-center">
-            <div class="bg-[#3B82F6] text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow mb-1 whitespace-nowrap">나의 위치</div>
+            <div class="bg-[#3B82F6] text-white text-xs font-bold px-1.5 py-0.5 rounded shadow mb-1 whitespace-nowrap">나의 위치</div>
             <div class="pin-badge w-[30px] h-[30px] rounded-[50%_50%_50%_4px] rotate-45 flex items-center justify-center bg-white border-3 border-[#3B82F6] shadow-[0_1px_2px_rgba(15,23,42,.08)]">
               <svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2.4" class="-rotate-45 w-[14px] h-[14px]">
                 <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14h-2v-2h2zm0-4h-2V7h2z"/>
@@ -225,14 +225,14 @@ export function KakaoMap({
         <div className="absolute inset-0 bg-[#F1F5F9] flex flex-col items-center justify-center gap-2 z-10">
           {mapLoadFailed ? (
             <>
-              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black">!</div>
-              <p className="text-[12px] text-[#475569] font-medium font-sans">카카오 지도를 불러오지 못했습니다.</p>
-              <p className="text-[10px] text-slate-400">JavaScript 키와 허용 도메인을 확인해 주세요.</p>
+              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold">!</div>
+              <p className="text-xs text-[#475569] font-medium font-sans">카카오 지도를 불러오지 못했습니다.</p>
+              <p className="text-xs text-slate-400">JavaScript 키와 허용 도메인을 확인해 주세요.</p>
             </>
           ) : (
             <>
               <div className="w-8 h-8 border-4 border-[#2563EB] border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-[12px] text-[#475569] font-medium font-sans">카카오 지도 데이터를 구성하고 있습니다...</p>
+              <p className="text-xs text-[#475569] font-medium font-sans">카카오 지도 데이터를 구성하고 있습니다...</p>
             </>
           )}
         </div>
