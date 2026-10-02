@@ -1,0 +1,9 @@
+{
+  "capturedAt": "2026-10-02",
+  "conditions": "실제 로컬 FastAPI의 DEMO 응답. frontend/e2e/boundaries.e2e.ts가 외부 장소 SDK만 테스트 대역으로 대체. 실제 지도·길찾기 정확도 미검증.",
+  "sha256": {
+    "screens/demo-desktop.png": "b7727423c9c116975e78e14d556400a761911dfd1f07c285cf07d37a5a34f953",
+    "screens/demo-mobile.png": "5203c18362a034c2720b125e9c282afc8524a668795bea6678e56c1aa6d92723",
+    "architecture/request-flow.svg": "c5f24666acfb972d305c130b3bf1e3f09102ff68a3d9e0f991535aa7c756caae"
+  }
+}

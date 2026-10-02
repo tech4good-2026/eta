@@ -37,7 +37,7 @@ from app.providers.mock import MockRouteProvider
 from app.providers.seoul import SeoulDataClient
 from app.providers.seoul_bus import SeoulBusClient
 from app.providers.tmap import TmapRouteProvider
-from app.providers.walkway import MockWalkwaySource
+from app.providers.walkway import MockWalkwaySource, UnknownWalkwaySource
 from app.services import RouteService, StoredRoute
 from app.storage import MemoryTTLStore
 
@@ -107,8 +107,9 @@ def build_container(settings: Settings) -> ApplicationContainer:
             use_synthetic_bus=settings.route_provider == "mock",
             # 데모용 목업: 경사 세그먼트와 저상버스 도착정보를 SYNTHETIC_FIXTURE로
             # 제공한다. 실데이터 어댑터가 준비되면 제거한다.
-            walkway=MockWalkwaySource(),
-            synthetic_bus_fallback=True,
+            walkway=MockWalkwaySource() if settings.route_provider == "mock" else UnknownWalkwaySource(),
+            use_synthetic_facilities=settings.route_provider == "mock",
+            synthetic_bus_fallback=settings.route_provider == "mock",
         ),
         engine=BaselinePersonalizationEngine(),
         store=MemoryTTLStore[StoredRoute](),
@@ -157,7 +158,8 @@ def create_app(
 
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok", "routeProvider": resolved.route_provider}
+        return {"status": "ok", "routeProvider": resolved.route_provider,
+                "dataMode": "DEMO" if resolved.route_provider == "mock" else "LIVE"}
 
     @app.get(
         "/api/v1/users/me/profile",
@@ -185,9 +187,8 @@ def create_app(
     async def search_routes(
         request: RouteSearchRequest, _user: DemoUser
     ) -> RouteSearchResponse:
-        return await dependencies.route_service.search(
-            request, dependencies.profile_store.get()
-        )
+        response = await dependencies.route_service.search(request, dependencies.profile_store.get())
+        return response.model_copy(update={"data_mode": "DEMO" if resolved.route_provider == "mock" else "LIVE"})
 
     @app.get(
         "/api/v1/routes/{route_id}",

@@ -26,7 +26,6 @@ from app.providers.seoul import SeoulDataClient
 from app.providers.seoul_bus import SeoulBusClient
 from app.providers.walkway import UnknownWalkwaySource, WalkwaySource
 
-
 T = TypeVar("T")
 
 #: provider 하나를 기다리는 한도. 넘기면 그 항목만 '확인 안 됨'으로 내려가고
@@ -43,6 +42,7 @@ class HybridAccessibilityProvider:
         bus: SeoulBusClient | None = None,
         clock: Callable[[], datetime] | None = None,
         use_synthetic_bus: bool = True,
+        use_synthetic_facilities: bool = False,
         walkway: WalkwaySource | None = None,
         synthetic_bus_fallback: bool = False,
         provider_timeout_sec: float | None = DEFAULT_PROVIDER_TIMEOUT_SEC,
@@ -51,6 +51,7 @@ class HybridAccessibilityProvider:
         self.bus = bus
         self.clock = clock or (lambda: datetime.now().astimezone())
         self.use_synthetic_bus = use_synthetic_bus
+        self.use_synthetic_facilities = use_synthetic_facilities
         self.walkway = walkway or UnknownWalkwaySource()
         # 실시간 버스 도착을 얻지 못했을 때 데모용 목업 도착정보를 만들지 여부.
         self.synthetic_bus_fallback = synthetic_bus_fallback
@@ -104,8 +105,8 @@ class HybridAccessibilityProvider:
             *(self._bus_accessibility(*bus_calls[key]) for key in bus_keys),
             *(self._subway_accessibility(*subway_calls[key]) for key in subway_keys),
         )
-        bus_answer = dict(zip(bus_keys, answers[: len(bus_keys)]))
-        subway_answer = dict(zip(subway_keys, answers[len(bus_keys) :]))
+        bus_answer = dict(zip(bus_keys, answers[: len(bus_keys)], strict=True))
+        subway_answer = dict(zip(subway_keys, answers[len(bus_keys) :], strict=True))
 
         return AccessibilityContext(
             walk=walk,
@@ -223,6 +224,8 @@ class HybridAccessibilityProvider:
         line_name: str,
     ) -> StationAccessibility:
         if self.seoul is None:
+            if not self.use_synthetic_facilities:
+                return StationAccessibility(elevator_status=FacilityStatus.UNKNOWN)
             return StationAccessibility(
                 elevator_status=FacilityStatus.AVAILABLE,
                 confidence=DataConfidence.ESTIMATED,
@@ -256,6 +259,7 @@ class HybridAccessibilityProvider:
         status = (
             FacilityStatus.UNAVAILABLE
             if FacilityStatus.UNAVAILABLE in statuses
+            else FacilityStatus.UNKNOWN if FacilityStatus.UNKNOWN in statuses
             else FacilityStatus.AVAILABLE
         )
         descriptions = [
@@ -269,12 +273,15 @@ class HybridAccessibilityProvider:
         return StationAccessibility(
             elevator_status=status,
             confidence=(
+                DataConfidence.UNKNOWN if status == FacilityStatus.UNKNOWN else
                 DataConfidence.VERIFIED
                 if boarding.confidence == alighting.confidence == DataConfidence.VERIFIED
                 else DataConfidence.ESTIMATED
             ),
             location_description=" / ".join(descriptions) or None,
-            observed_at=self.clock(),
+            observed_at=min((value.observed_at for value in (boarding, alighting) if value.observed_at), default=None),
+            fetched_at=min((value.fetched_at for value in (boarding, alighting) if value.fetched_at), default=None),
+            facility_exists=boarding.exists and alighting.exists,
             source=DataSource.SEOUL_OPEN_DATA,
             departures=departures,
             boarding_units=boarding_units,
@@ -295,6 +302,7 @@ class HybridAccessibilityProvider:
                 location_description=unit.location_description,
                 floors=unit.floors,
                 status=unit.status,
+                fetched_at=unit.fetched_at,
             )
             for unit in units
         )

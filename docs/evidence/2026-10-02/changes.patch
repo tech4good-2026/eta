@@ -1,0 +1,458 @@
+diff --git a/backend/app/domain.py b/backend/app/domain.py
+index de41366..4cb5656 100644
+--- a/backend/app/domain.py
++++ b/backend/app/domain.py
+@@ -92,11 +92,14 @@ class FacilityUnit:
+     station_name: str
+     location_description: str | None = None
+     floors: str | None = None
+-    status: FacilityStatus = FacilityStatus.AVAILABLE
++    status: FacilityStatus = FacilityStatus.UNKNOWN
++    fetched_at: datetime | None = None
+ 
+ 
+ @dataclass(frozen=True)
+ class StationAccessibility:
++    facility_exists: bool | None = None
++    fetched_at: datetime | None = None
+     elevator_status: FacilityStatus | None = None
+     confidence: DataConfidence = DataConfidence.UNKNOWN
+     location_description: str | None = None
+diff --git a/backend/app/main.py b/backend/app/main.py
+index 94c825c..0b5d7f3 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -37,7 +37,7 @@ from app.providers.mock import MockRouteProvider
+ from app.providers.seoul import SeoulDataClient
+ from app.providers.seoul_bus import SeoulBusClient
+ from app.providers.tmap import TmapRouteProvider
+-from app.providers.walkway import MockWalkwaySource
++from app.providers.walkway import MockWalkwaySource, UnknownWalkwaySource
+ from app.services import RouteService, StoredRoute
+ from app.storage import MemoryTTLStore
+ 
+@@ -107,8 +107,9 @@ def build_container(settings: Settings) -> ApplicationContainer:
+             use_synthetic_bus=settings.route_provider == "mock",
+             # 데모용 목업: 경사 세그먼트와 저상버스 도착정보를 SYNTHETIC_FIXTURE로
+             # 제공한다. 실데이터 어댑터가 준비되면 제거한다.
+-            walkway=MockWalkwaySource(),
+-            synthetic_bus_fallback=True,
++            walkway=MockWalkwaySource() if settings.route_provider == "mock" else UnknownWalkwaySource(),
++            use_synthetic_facilities=settings.route_provider == "mock",
++            synthetic_bus_fallback=settings.route_provider == "mock",
+         ),
+         engine=BaselinePersonalizationEngine(),
+         store=MemoryTTLStore[StoredRoute](),
+@@ -157,7 +158,8 @@ def create_app(
+ 
+     @app.get("/health")
+     async def health() -> dict[str, str]:
+-        return {"status": "ok", "routeProvider": resolved.route_provider}
++        return {"status": "ok", "routeProvider": resolved.route_provider,
++                "dataMode": "DEMO" if resolved.route_provider == "mock" else "LIVE"}
+ 
+     @app.get(
+         "/api/v1/users/me/profile",
+@@ -185,9 +187,8 @@ def create_app(
+     async def search_routes(
+         request: RouteSearchRequest, _user: DemoUser
+     ) -> RouteSearchResponse:
+-        return await dependencies.route_service.search(
+-            request, dependencies.profile_store.get()
+-        )
++        response = await dependencies.route_service.search(request, dependencies.profile_store.get())
++        return response.model_copy(update={"data_mode": "DEMO" if resolved.route_provider == "mock" else "LIVE"})
+ 
+     @app.get(
+         "/api/v1/routes/{route_id}",
+diff --git a/backend/app/models.py b/backend/app/models.py
+index 91d73c4..b39a327 100644
+--- a/backend/app/models.py
++++ b/backend/app/models.py
+@@ -212,6 +212,8 @@ class BusLeg(BaseLeg):
+ 
+ 
+ class StationFacility(ApiModel):
++    exists: bool | None = None
++    fetched_at: datetime | None = None
+     type: Literal["ELEVATOR", "ESCALATOR", "WHEELCHAIR_LIFT", "ACCESSIBLE_TOILET"]
+     status: FacilityStatus
+     location_description: str | None = None
+@@ -271,6 +273,7 @@ class SearchStatus(StrEnum):
+ 
+ 
+ class RouteSearchResponse(ApiModel):
++    data_mode: Literal["DEMO", "LIVE"] | None = None
+     search_id: str
+     mode: RouteMode
+     status: SearchStatus
+diff --git a/backend/app/personalization.py b/backend/app/personalization.py
+index de0fb95..5e9293f 100644
+--- a/backend/app/personalization.py
++++ b/backend/app/personalization.py
+@@ -437,6 +437,8 @@ class BaselinePersonalizationEngine:
+                     StationFacility(
+                         type="ELEVATOR",
+                         status=unit.status,
++                        exists=True,
++                        fetched_at=unit.fetched_at,
+                         location_description=detail or None,
+                         observed_at=value.observed_at if value else None,
+                         station_name=unit.station_name,
+@@ -450,6 +452,8 @@ class BaselinePersonalizationEngine:
+                 StationFacility(
+                     type="ELEVATOR",
+                     status=elevator,
++                    exists=value.facility_exists if value else None,
++                    fetched_at=value.fetched_at if value else None,
+                     location_description=value.location_description if value else None,
+                     observed_at=value.observed_at if value else None,
+                     data_confidence=confidence,
+diff --git a/backend/app/providers/accessibility.py b/backend/app/providers/accessibility.py
+index 4d507d0..8599c07 100644
+--- a/backend/app/providers/accessibility.py
++++ b/backend/app/providers/accessibility.py
+@@ -26,7 +26,6 @@ from app.providers.seoul import SeoulDataClient
+ from app.providers.seoul_bus import SeoulBusClient
+ from app.providers.walkway import UnknownWalkwaySource, WalkwaySource
+ 
+-
+ T = TypeVar("T")
+ 
+ #: provider 하나를 기다리는 한도. 넘기면 그 항목만 '확인 안 됨'으로 내려가고
+@@ -43,6 +42,7 @@ class HybridAccessibilityProvider:
+         bus: SeoulBusClient | None = None,
+         clock: Callable[[], datetime] | None = None,
+         use_synthetic_bus: bool = True,
++        use_synthetic_facilities: bool = False,
+         walkway: WalkwaySource | None = None,
+         synthetic_bus_fallback: bool = False,
+         provider_timeout_sec: float | None = DEFAULT_PROVIDER_TIMEOUT_SEC,
+@@ -51,6 +51,7 @@ class HybridAccessibilityProvider:
+         self.bus = bus
+         self.clock = clock or (lambda: datetime.now().astimezone())
+         self.use_synthetic_bus = use_synthetic_bus
++        self.use_synthetic_facilities = use_synthetic_facilities
+         self.walkway = walkway or UnknownWalkwaySource()
+         # 실시간 버스 도착을 얻지 못했을 때 데모용 목업 도착정보를 만들지 여부.
+         self.synthetic_bus_fallback = synthetic_bus_fallback
+@@ -104,8 +105,8 @@ class HybridAccessibilityProvider:
+             *(self._bus_accessibility(*bus_calls[key]) for key in bus_keys),
+             *(self._subway_accessibility(*subway_calls[key]) for key in subway_keys),
+         )
+-        bus_answer = dict(zip(bus_keys, answers[: len(bus_keys)]))
+-        subway_answer = dict(zip(subway_keys, answers[len(bus_keys) :]))
++        bus_answer = dict(zip(bus_keys, answers[: len(bus_keys)], strict=True))
++        subway_answer = dict(zip(subway_keys, answers[len(bus_keys) :], strict=True))
+ 
+         return AccessibilityContext(
+             walk=walk,
+@@ -223,6 +224,8 @@ class HybridAccessibilityProvider:
+         line_name: str,
+     ) -> StationAccessibility:
+         if self.seoul is None:
++            if not self.use_synthetic_facilities:
++                return StationAccessibility(elevator_status=FacilityStatus.UNKNOWN)
+             return StationAccessibility(
+                 elevator_status=FacilityStatus.AVAILABLE,
+                 confidence=DataConfidence.ESTIMATED,
+@@ -256,6 +259,7 @@ class HybridAccessibilityProvider:
+         status = (
+             FacilityStatus.UNAVAILABLE
+             if FacilityStatus.UNAVAILABLE in statuses
++            else FacilityStatus.UNKNOWN if FacilityStatus.UNKNOWN in statuses
+             else FacilityStatus.AVAILABLE
+         )
+         descriptions = [
+@@ -269,12 +273,15 @@ class HybridAccessibilityProvider:
+         return StationAccessibility(
+             elevator_status=status,
+             confidence=(
++                DataConfidence.UNKNOWN if status == FacilityStatus.UNKNOWN else
+                 DataConfidence.VERIFIED
+                 if boarding.confidence == alighting.confidence == DataConfidence.VERIFIED
+                 else DataConfidence.ESTIMATED
+             ),
+             location_description=" / ".join(descriptions) or None,
+-            observed_at=self.clock(),
++            observed_at=min((value.observed_at for value in (boarding, alighting) if value.observed_at), default=None),
++            fetched_at=min((value.fetched_at for value in (boarding, alighting) if value.fetched_at), default=None),
++            facility_exists=boarding.exists and alighting.exists,
+             source=DataSource.SEOUL_OPEN_DATA,
+             departures=departures,
+             boarding_units=boarding_units,
+@@ -295,6 +302,7 @@ class HybridAccessibilityProvider:
+                 location_description=unit.location_description,
+                 floors=unit.floors,
+                 status=unit.status,
++                fetched_at=unit.fetched_at,
+             )
+             for unit in units
+         )
+diff --git a/backend/app/providers/seoul.py b/backend/app/providers/seoul.py
+index 99cbbc5..374b139 100644
+--- a/backend/app/providers/seoul.py
++++ b/backend/app/providers/seoul.py
+@@ -1,4 +1,6 @@
++import asyncio
+ from dataclasses import dataclass
++from datetime import UTC, datetime
+ from time import monotonic
+ from typing import Any
+ from urllib.parse import quote
+@@ -13,7 +15,10 @@ from app.models import DataConfidence, FacilityStatus
+ class SeoulElevator:
+     status: FacilityStatus
+     location_description: str | None
+-    confidence: DataConfidence = DataConfidence.VERIFIED
++    confidence: DataConfidence = DataConfidence.UNKNOWN
++    exists: bool = True
++    observed_at: datetime | None = None
++    fetched_at: datetime | None = None
+ 
+ 
+ @dataclass(frozen=True)
+@@ -24,7 +29,8 @@ class SeoulElevatorUnit:
+     line_name: str | None
+     location_description: str | None
+     floors: str | None
+-    status: FacilityStatus = FacilityStatus.AVAILABLE
++    status: FacilityStatus = FacilityStatus.UNKNOWN
++    fetched_at: datetime | None = None
+ 
+ 
+ @dataclass(frozen=True)
+@@ -52,6 +58,8 @@ class SeoulDataClient:
+         self.elevator_cache_ttl_sec = elevator_cache_ttl_sec
+         self._elevator_rows: list[dict[str, Any]] | None = None
+         self._elevator_rows_expires_at = 0.0
++        self._elevator_fetched_at: datetime | None = None
++        self._elevator_inflight: asyncio.Task[list[dict[str, Any]]] | None = None
+ 
+     async def get_elevator(self, station_name: str) -> SeoulElevator | None:
+         rows = await self._get_elevator_rows()
+@@ -68,28 +76,69 @@ class SeoulDataClient:
+                     or row.get("dtlPstn")
+                 )
+                 return SeoulElevator(
+-                    status=FacilityStatus.AVAILABLE,
++                    status=FacilityStatus.UNKNOWN,
++                    fetched_at=self._elevator_fetched_at,
+                     location_description=str(location) if location else None,
+                 )
+         return None
+ 
+     async def _get_elevator_rows(self) -> list[dict[str, Any]]:
+-        now = monotonic()
+-        if self._elevator_rows is not None and now < self._elevator_rows_expires_at:
++        if self._elevator_rows is not None and monotonic() < self._elevator_rows_expires_at:
+             return self._elevator_rows
++        # 같은 이벤트 루프에서 await 전에 task를 등록하므로 첫 조회를 공유한다.
++        if self._elevator_inflight is None:
++            task = asyncio.create_task(self._fetch_elevator_rows())
++            self._elevator_inflight = task
++            task.add_done_callback(self._finish_elevator_fetch)
++        # 한 요청의 타임아웃/취소가 다른 요청의 조회까지 취소하지 않게 한다.
++        return await asyncio.shield(self._elevator_inflight)
++
++    def _finish_elevator_fetch(self, task: asyncio.Task) -> None:
++        if self._elevator_inflight is task:
++            self._elevator_inflight = None
++        # 모든 대기자가 취소된 경우에도 task 예외를 회수한다.
++        if not task.cancelled():
++            task.exception()
++
++    async def _fetch_elevator_rows(self) -> list[dict[str, Any]]:
+         url = f"{self.elevator_base_url}/{self.api_key}/json/getFcElvtr/1/1000"
+         payload = await self._get_json(url)
+-        legacy_rows = (payload.get("getFcElvtr") or {}).get("row", [])
+-        current_items = (
+-            ((payload.get("response") or {}).get("body") or {}).get("items") or {}
+-        )
+-        current_rows = (
+-            current_items.get("item", []) if isinstance(current_items, dict) else []
+-        )
+-        raw_rows = legacy_rows or current_rows
+-        self._elevator_rows = [row for row in raw_rows if isinstance(row, dict)]
+-        self._elevator_rows_expires_at = now + self.elevator_cache_ttl_sec
+-        return self._elevator_rows
++        legacy = payload.get("getFcElvtr")
++        current = payload.get("response")
++        if isinstance(legacy, dict):
++            result = legacy.get("RESULT") or {}
++            if not isinstance(result, dict):
++                raise self._unavailable()
++            code = result.get("CODE")
++            if code not in (None, "INFO-000"):
++                raise self._unavailable()
++            raw_rows = legacy.get("row")
++        elif isinstance(current, dict):
++            header = current.get("header") or {}
++            if not isinstance(header, dict):
++                raise self._unavailable()
++            code = header.get("resultCode")
++            if code not in ("00", "INFO-000"):
++                raise self._unavailable()
++            body = current.get("body") or {}
++            if not isinstance(body, dict):
++                raise self._unavailable()
++            items = body.get("items") or {}
++            if not isinstance(items, dict):
++                raise self._unavailable()
++            raw_rows = items.get("item", []) if isinstance(items, dict) else []
++            if isinstance(raw_rows, dict):
++                raw_rows = [raw_rows]
++        elif isinstance(payload.get("RESULT"), dict) and payload["RESULT"].get("CODE") == "INFO-200":
++            raw_rows = []  # 명시적인 자료 없음만 정상 빈 결과로 보관
++        else:
++            raise self._unavailable()
++        if not isinstance(raw_rows, list) or any(not isinstance(row, dict) for row in raw_rows):
++            raise self._unavailable()
++        self._elevator_rows = raw_rows
++        self._elevator_fetched_at = datetime.now(UTC)
++        self._elevator_rows_expires_at = monotonic() + self.elevator_cache_ttl_sec
++        return raw_rows
+ 
+     async def get_station_elevators(self, station_name: str) -> list[SeoulElevatorUnit]:
+         """해당 역의 엘리베이터 개별 위치 목록(방면·출구·운행층)을 반환한다."""
+@@ -110,6 +159,7 @@ class SeoulDataClient:
+                     line_name=str(row.get("lineNm") or "") or None,
+                     location_description=str(location) if location else None,
+                     floors=floors,
++                    fetched_at=self._elevator_fetched_at,
+                 )
+             )
+         return units
+diff --git a/docs/openapi.yaml b/docs/openapi.yaml
+index 553e11c..5593d39 100644
+--- a/docs/openapi.yaml
++++ b/docs/openapi.yaml
+@@ -891,6 +891,13 @@ components:
+       additionalProperties: false
+       required: [type, status, dataConfidence]
+       properties:
++        exists:
++          type: boolean
++          description: 시설 목록에서 존재를 확인했는가. 운행 확인과 다르다.
++        fetchedAt:
++          type: string
++          format: date-time
++          description: 원본 목록을 조회한 시각. 캐시 사용 시 갱신하지 않는다.
+         type:
+           type: string
+           enum: [ELEVATOR, ESCALATOR, WHEELCHAIR_LIFT, ACCESSIBLE_TOILET]
+@@ -899,6 +906,7 @@ components:
+         locationDescription:
+           type: string
+         observedAt:
++          description: 운행 상태를 관측한 시각. 목록 데이터만 있으면 제공하지 않는다.
+           type: string
+           format: date-time
+         stationName:
+@@ -1031,6 +1039,10 @@ components:
+       additionalProperties: false
+       required: [searchId, mode, status, generatedAt, expiresAt, routes, fallbackModes, notices]
+       properties:
++        dataMode:
++          type: string
++          enum: [DEMO, LIVE]
++          description: DEMO는 합성 자료, LIVE는 외부 API를 조회하며 미확인 값을 합성하지 않는다.
+         searchId:
+           type: string
+         mode:
+diff --git a/frontend/src/App.tsx b/frontend/src/App.tsx
+index 82ec32f..22bb035 100644
+--- a/frontend/src/App.tsx
++++ b/frontend/src/App.tsx
+@@ -84,6 +84,7 @@ export default function App() {
+   const [origin, setOrigin] = useState<Place | null>(null);
+   const [destination, setDestination] = useState<Place | null>(null);
+   const [mode, setMode] = useState<"transit" | "taxi" | "walk">("transit");
++  const [dataMode, setDataMode] = useState<"DEMO" | "LIVE" | null>(null);
+   const [routes, setRoutes] = useState<RouteInfo[]>([]);
+   const [selectedRoute, setSelectedRoute] = useState<RouteInfo | null>(null);
+   const [routeSearchStatus, setRouteSearchStatus] = useState<"SUCCESS" | "NO_ACCESSIBLE_ROUTE">("SUCCESS");
+@@ -320,6 +321,7 @@ export default function App() {
+         mode: mapModeToApi(nextMode),
+         departureAt: new Date().toISOString(),
+       });
++      setDataMode(response.dataMode ?? null);
+       const result = mapRouteSearchFromApi(response);
+       routeCacheRef.current.set(cacheKey, { status: result.status, routes: result.routes });
+       setRoutes(result.routes);
+@@ -383,6 +385,11 @@ export default function App() {
+       {/* Smartphone frame container layout — 창이 작아도 프레임이 화면 안에 맞고 내부가 스크롤된다 */}
+       <div className="w-full max-w-[428px] h-[100dvh] sm:h-[860px] sm:max-h-[calc(100dvh-32px)] bg-slate-50 shadow-2xl relative flex flex-col overflow-hidden sm:rounded-[40px] sm:border-[8px] sm:border-slate-850">
+ 
++        {dataMode && (
++          <p className="shrink-0 bg-amber-50 text-amber-950 text-sm px-4 py-2 border-b border-amber-200" role="note">
++            {dataMode === "DEMO" ? "합성 데이터 데모 · 실제 길 안내가 아닙니다." : "실 API 모드 · 운행 미확인 정보가 포함될 수 있습니다."}
++          </p>
++        )}
+         {/* Offline Banner indicator (Section 6 & 11) */}
+         {isOffline && (
+           <div className="bg-red-500 text-white text-sm font-bold px-4 py-2 flex items-center justify-between z-50 shrink-0">
+diff --git a/frontend/src/api/mappers.test.ts b/frontend/src/api/mappers.test.ts
+index 6b50100..99233b1 100644
+--- a/frontend/src/api/mappers.test.ts
++++ b/frontend/src/api/mappers.test.ts
+@@ -197,3 +197,20 @@ describe("route mappers", () => {
+     expect(route.segments[0].facilityStatus).toBe("UNKNOWN");
+   });
+ });
++
++it('시설 위치가 있어도 상태 미확인과 목록 조회 시각을 함께 보여준다', () => {
++  const route = mapRouteFromApi({ ...apiRoute, legs: [{
++    ...apiRoute.legs[0], mode: 'SUBWAY', lineId: '1', lineName: '1호선',
++    boardingStation: apiRoute.legs[0].start, alightingStation: apiRoute.legs[0].end,
++    departureAt: '2026-10-02T09:00:00+09:00', arrivalAt: '2026-10-02T09:10:00+09:00',
++    timeSource: 'ESTIMATED', dataConfidence: 'UNKNOWN', facilities: [{
++      type: 'ELEVATOR', status: 'UNKNOWN', exists: true, stationName: '서울역',
++      locationDescription: '1번 출구', fetchedAt: '2026-10-02T00:00:00Z',
++      dataConfidence: 'UNKNOWN', dataSource: 'SEOUL_OPEN_DATA',
++    }],
++  }] });
++  expect(route.segments[0].facilityStatus).toBe('UNKNOWN');
++  expect(route.segments[0].tags.join(' ')).toContain('운행 미확인');
++  expect(route.segments[0].tags.join(' ')).toContain('목록 조회');
++  expect(route.segments[0].tags.join(' ')).toContain('서울역');
++});
+diff --git a/frontend/src/api/mappers.ts b/frontend/src/api/mappers.ts
+index 5ef2da9..1401abd 100644
+--- a/frontend/src/api/mappers.ts
++++ b/frontend/src/api/mappers.ts
+@@ -148,7 +148,12 @@ function legToSegment(leg: ApiRouteLeg): RouteSegment {
+       ? [
+           ...located
+             .slice(0, 3)
+-            .map((facility) => `엘리베이터 ${facility.stationName} ${facility.locationDescription}`),
++            .map((facility) => {
++              const status = facility.status === "UNKNOWN" ? "운행 미확인" : facilityLabel(facility);
++              const fetched = facility.fetchedAt
++                ? ` · 목록 조회 ${new Date(facility.fetchedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "";
++              return `엘리베이터 ${facility.stationName} ${facility.locationDescription} · ${status}${fetched}`;
++            }),
+           ...(located.length > 3 ? [`엘리베이터 외 ${located.length - 3}대`] : []),
+           timeSourceLabel(leg.timeSource),
+         ]
+diff --git a/frontend/src/api/types.ts b/frontend/src/api/types.ts
+index d360906..444d011 100644
+--- a/frontend/src/api/types.ts
++++ b/frontend/src/api/types.ts
+@@ -139,6 +139,8 @@ export interface ApiStationFacility {
+   status: "AVAILABLE" | "UNAVAILABLE" | "UNKNOWN";
+   locationDescription?: string | null;
+   observedAt?: string | null;
++  exists?: boolean | null;
++  fetchedAt?: string | null;
+   stationName?: string | null;
+   coordinate?: ApiCoordinate | null;
+   dataConfidence: ApiDataConfidence;
+@@ -197,6 +199,7 @@ export interface ApiRouteSearchRequest {
+ }
+ 
+ export interface ApiRouteSearchResponse {
++  dataMode?: "DEMO" | "LIVE";
+   searchId: string;
+   mode: ApiRouteMode;
+   status: "SUCCESS" | "NO_ACCESSIBLE_ROUTE";

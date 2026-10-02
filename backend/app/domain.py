@@ -92,11 +92,14 @@ class FacilityUnit:
     station_name: str
     location_description: str | None = None
     floors: str | None = None
-    status: FacilityStatus = FacilityStatus.AVAILABLE
+    status: FacilityStatus = FacilityStatus.UNKNOWN
+    fetched_at: datetime | None = None
 
 
 @dataclass(frozen=True)
 class StationAccessibility:
+    facility_exists: bool | None = None
+    fetched_at: datetime | None = None
     elevator_status: FacilityStatus | None = None
     confidence: DataConfidence = DataConfidence.UNKNOWN
     location_description: str | None = None

@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    environment:
+      ROUTE_PROVIDER: mock
+      DEMO_TOKEN: demo-token
+      CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:4178"]'
+    ports:
+      - "127.0.0.1:${ETA_API_PORT:-18083}:8000"

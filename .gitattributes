@@ -1,0 +1,3 @@
+
+# Archived patches preserve diff context prefixes and original whitespace.
+docs/evidence/**/*.patch -whitespace

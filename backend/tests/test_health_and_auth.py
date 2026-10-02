@@ -21,7 +21,7 @@ def test_health_reports_mock_provider() -> None:
         response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "routeProvider": "mock"}
+    assert response.json() == {"status": "ok", "routeProvider": "mock", "dataMode": "DEMO"}
 
 
 def test_profile_requires_bearer_token() -> None:

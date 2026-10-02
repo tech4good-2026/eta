@@ -1,0 +1,44 @@
+{
+  "recorded_at": "2026-10-02T10:12:53.874599+00:00",
+  "base_commit": "e5805dfa7e56a3618c30e42d862c42e3bb422d69",
+  "revision": "uncommitted local working tree; provider SHA256 identifies measured source",
+  "provider_sha256": "3fa8165ba8e98579c2a89ac9f7fbd223c1e10af3865cfd8263dfcdef59c24d8d",
+  "conditions": {
+    "callers_per_wave": 8,
+    "repetitions": 1,
+    "injected_delay_ms": 20,
+    "warmup": 0,
+    "failures": 0,
+    "transport": "httpx.MockTransport",
+    "real_api_calls": 0
+  },
+  "cold": {
+    "upstream_calls": 1,
+    "elapsed_ns_by_caller": [
+      21447458,
+      21439375,
+      21436291,
+      21436042,
+      21437208,
+      21436208,
+      21436875,
+      21437834
+    ]
+  },
+  "warm": {
+    "additional_upstream_calls": 0,
+    "elapsed_ns_by_caller": [
+      2833,
+      1417,
+      1041,
+      1250,
+      916,
+      917,
+      875,
+      1083
+    ]
+  },
+  "upstream_started_monotonic_ns": [
+    3559268307502500
+  ]
+}
