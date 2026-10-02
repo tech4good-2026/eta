@@ -437,6 +437,8 @@ class BaselinePersonalizationEngine:
                     StationFacility(
                         type="ELEVATOR",
                         status=unit.status,
+                        exists=True,
+                        fetched_at=unit.fetched_at,
                         location_description=detail or None,
                         observed_at=value.observed_at if value else None,
                         station_name=unit.station_name,
@@ -450,6 +452,8 @@ class BaselinePersonalizationEngine:
                 StationFacility(
                     type="ELEVATOR",
                     status=elevator,
+                    exists=value.facility_exists if value else None,
+                    fetched_at=value.fetched_at if value else None,
                     location_description=value.location_description if value else None,
                     observed_at=value.observed_at if value else None,
                     data_confidence=confidence,

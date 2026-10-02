@@ -146,11 +146,13 @@ def test_navigation_complete_is_idempotency_guarded_and_keeps_speed_without_samp
 
     assert positioned.status_code == 200
     assert completed.status_code == 200
-    assert completed.json() == {
+    completed_body = completed.json()
+    # RFC 3339 allows both Z and +00:00 for UTC. Compare the instant, not the spelling.
+    assert datetime.fromisoformat(completed_body["completedAt"]) == completed_at
+    assert {key: value for key, value in completed_body.items() if key != "completedAt"} == {
         "sessionId": session_id,
         "status": "COMPLETED",
         "routeRevision": 1,
-        "completedAt": completed_at.isoformat(),
         "walkingSpeedUpdated": False,
         "walkingSpeed": profile_before["walkingSpeed"],
     }

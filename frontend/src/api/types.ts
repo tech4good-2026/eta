@@ -139,6 +139,8 @@ export interface ApiStationFacility {
   status: "AVAILABLE" | "UNAVAILABLE" | "UNKNOWN";
   locationDescription?: string | null;
   observedAt?: string | null;
+  exists?: boolean | null;
+  fetchedAt?: string | null;
   stationName?: string | null;
   coordinate?: ApiCoordinate | null;
   dataConfidence: ApiDataConfidence;
@@ -197,6 +199,7 @@ export interface ApiRouteSearchRequest {
 }
 
 export interface ApiRouteSearchResponse {
+  dataMode?: "DEMO" | "LIVE";
   searchId: string;
   mode: ApiRouteMode;
   status: "SUCCESS" | "NO_ACCESSIBLE_ROUTE";

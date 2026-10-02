@@ -148,7 +148,12 @@ function legToSegment(leg: ApiRouteLeg): RouteSegment {
       ? [
           ...located
             .slice(0, 3)
-            .map((facility) => `엘리베이터 ${facility.stationName} ${facility.locationDescription}`),
+            .map((facility) => {
+              const status = facility.status === "UNKNOWN" ? "운행 미확인" : facilityLabel(facility);
+              const fetched = facility.fetchedAt
+                ? ` · 목록 조회 ${new Date(facility.fetchedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : "";
+              return `엘리베이터 ${facility.stationName} ${facility.locationDescription} · ${status}${fetched}`;
+            }),
           ...(located.length > 3 ? [`엘리베이터 외 ${located.length - 3}대`] : []),
           timeSourceLabel(leg.timeSource),
         ]

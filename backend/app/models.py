@@ -212,6 +212,8 @@ class BusLeg(BaseLeg):
 
 
 class StationFacility(ApiModel):
+    exists: bool | None = None
+    fetched_at: datetime | None = None
     type: Literal["ELEVATOR", "ESCALATOR", "WHEELCHAIR_LIFT", "ACCESSIBLE_TOILET"]
     status: FacilityStatus
     location_description: str | None = None
@@ -271,6 +273,7 @@ class SearchStatus(StrEnum):
 
 
 class RouteSearchResponse(ApiModel):
+    data_mode: Literal["DEMO", "LIVE"] | None = None
     search_id: str
     mode: RouteMode
     status: SearchStatus

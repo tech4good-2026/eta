@@ -8,7 +8,7 @@ from app.providers.seoul import SeoulDataClient
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_elevator_presence_is_normalized_as_available() -> None:
+async def test_elevator_inventory_presence_keeps_operation_unknown() -> None:
     upstream = respx.get(url__regex=r"http://openapi\.seoul\.go\.kr:8088/.*").mock(
         return_value=httpx.Response(
             200,
@@ -36,7 +36,7 @@ async def test_elevator_presence_is_normalized_as_available() -> None:
         second = await seoul.get_elevator("시청역")
 
     assert facility is not None
-    assert facility.status == FacilityStatus.AVAILABLE
+    assert facility.status == FacilityStatus.UNKNOWN
     assert facility.location_description == "1번 출구 방면"
     assert second is not None
     assert upstream.call_count == 1
@@ -75,7 +75,7 @@ async def test_elevator_supports_current_seoul_response_envelope() -> None:
         ).get_elevator("서울역")
 
     assert facility is not None
-    assert facility.status == FacilityStatus.AVAILABLE
+    assert facility.status == FacilityStatus.UNKNOWN
     assert facility.location_description == "1번 출구 방면"
 
 
@@ -131,7 +131,7 @@ async def test_station_elevator_units_include_location_and_floors() -> None:
     assert units[0].location_description == "신설동 방면6-2"
     assert units[0].floors == "B1~4"
     assert units[1].floors == "B2~B1"
-    assert all(unit.status == FacilityStatus.AVAILABLE for unit in units)
+    assert all(unit.status == FacilityStatus.UNKNOWN for unit in units)
 
 
 @pytest.mark.asyncio

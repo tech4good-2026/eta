@@ -84,6 +84,7 @@ export default function App() {
   const [origin, setOrigin] = useState<Place | null>(null);
   const [destination, setDestination] = useState<Place | null>(null);
   const [mode, setMode] = useState<"transit" | "taxi" | "walk">("transit");
+  const [dataMode, setDataMode] = useState<"DEMO" | "LIVE" | null>(null);
   const [routes, setRoutes] = useState<RouteInfo[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<RouteInfo | null>(null);
   const [routeSearchStatus, setRouteSearchStatus] = useState<"SUCCESS" | "NO_ACCESSIBLE_ROUTE">("SUCCESS");
@@ -320,6 +321,7 @@ export default function App() {
         mode: mapModeToApi(nextMode),
         departureAt: new Date().toISOString(),
       });
+      setDataMode(response.dataMode ?? null);
       const result = mapRouteSearchFromApi(response);
       routeCacheRef.current.set(cacheKey, { status: result.status, routes: result.routes });
       setRoutes(result.routes);
@@ -383,6 +385,11 @@ export default function App() {
       {/* Smartphone frame container layout — 창이 작아도 프레임이 화면 안에 맞고 내부가 스크롤된다 */}
       <div className="w-full max-w-[428px] h-[100dvh] sm:h-[860px] sm:max-h-[calc(100dvh-32px)] bg-slate-50 shadow-2xl relative flex flex-col overflow-hidden sm:rounded-[40px] sm:border-[8px] sm:border-slate-850">
 
+        {dataMode && (
+          <p className="shrink-0 bg-amber-50 text-amber-950 text-sm px-4 py-2 border-b border-amber-200" role="note">
+            {dataMode === "DEMO" ? "합성 데이터 데모 · 실제 길 안내가 아닙니다." : "실 API 모드 · 운행 미확인 정보가 포함될 수 있습니다."}
+          </p>
+        )}
         {/* Offline Banner indicator (Section 6 & 11) */}
         {isOffline && (
           <div className="bg-red-500 text-white text-sm font-bold px-4 py-2 flex items-center justify-between z-50 shrink-0">

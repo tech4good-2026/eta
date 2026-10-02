@@ -891,6 +891,13 @@ components:
       additionalProperties: false
       required: [type, status, dataConfidence]
       properties:
+        exists:
+          type: boolean
+          description: 시설 목록에서 존재를 확인했는가. 운행 확인과 다르다.
+        fetchedAt:
+          type: string
+          format: date-time
+          description: 원본 목록을 조회한 시각. 캐시 사용 시 갱신하지 않는다.
         type:
           type: string
           enum: [ELEVATOR, ESCALATOR, WHEELCHAIR_LIFT, ACCESSIBLE_TOILET]
@@ -899,6 +906,7 @@ components:
         locationDescription:
           type: string
         observedAt:
+          description: 운행 상태를 관측한 시각. 목록 데이터만 있으면 제공하지 않는다.
           type: string
           format: date-time
         stationName:
@@ -1031,6 +1039,10 @@ components:
       additionalProperties: false
       required: [searchId, mode, status, generatedAt, expiresAt, routes, fallbackModes, notices]
       properties:
+        dataMode:
+          type: string
+          enum: [DEMO, LIVE]
+          description: DEMO는 합성 자료, LIVE는 외부 API를 조회하며 미확인 값을 합성하지 않는다.
         searchId:
           type: string
         mode:

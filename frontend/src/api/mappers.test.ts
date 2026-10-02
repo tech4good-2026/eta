@@ -197,3 +197,20 @@ describe("route mappers", () => {
     expect(route.segments[0].facilityStatus).toBe("UNKNOWN");
   });
 });
+
+it('시설 위치가 있어도 상태 미확인과 목록 조회 시각을 함께 보여준다', () => {
+  const route = mapRouteFromApi({ ...apiRoute, legs: [{
+    ...apiRoute.legs[0], mode: 'SUBWAY', lineId: '1', lineName: '1호선',
+    boardingStation: apiRoute.legs[0].start, alightingStation: apiRoute.legs[0].end,
+    departureAt: '2026-10-02T09:00:00+09:00', arrivalAt: '2026-10-02T09:10:00+09:00',
+    timeSource: 'ESTIMATED', dataConfidence: 'UNKNOWN', facilities: [{
+      type: 'ELEVATOR', status: 'UNKNOWN', exists: true, stationName: '서울역',
+      locationDescription: '1번 출구', fetchedAt: '2026-10-02T00:00:00Z',
+      dataConfidence: 'UNKNOWN', dataSource: 'SEOUL_OPEN_DATA',
+    }],
+  }] });
+  expect(route.segments[0].facilityStatus).toBe('UNKNOWN');
+  expect(route.segments[0].tags.join(' ')).toContain('운행 미확인');
+  expect(route.segments[0].tags.join(' ')).toContain('목록 조회');
+  expect(route.segments[0].tags.join(' ')).toContain('서울역');
+});
