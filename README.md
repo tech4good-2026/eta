@@ -1,57 +1,57 @@
 # My ETA
 
-**외부 정보가 없을 때, 확인하지 못한 사실을 확인됐다고 말하지 않습니다.**
+> 이동 조건을 반영하는 교통약자 개인화 길찾기 서비스
+>
+> 하나금융그룹 × SK텔레콤 Tech4Good 2026 · 15조 피프틴피프틴
 
-Tech4Good 2026 팀 프로젝트의 Python·FastAPI·React 코드입니다. 이번 개인 보강은 데이터 출처·시설 존재와 운행 상태·외부 호출의 동시 요청 처리를 다룹니다. 기존 언어와 공급자 구조를 유지합니다.
+My ETA는 노약자, 휠체어 이용자, 임산부 등 교통약자가 자신의 이동 조건에 맞는 경로와 예상 도착시간을 살펴보도록 돕는 모바일 웹 프로젝트입니다.
 
-[핵심 판단](#핵심-판단) · [검증 결과](#검증-결과) · [로컬 실행](#로컬-실행) · [코드 읽기](#코드-읽기)
+## 왜 만들었나요?
 
-## 실제 화면
+같은 거리라도 사람마다 이동에 필요한 시간과 경로가 다릅니다. 계단을 피해야 하거나, 엘리베이터와 저상버스가 필요하거나, 일반적인 보행속도보다 천천히 이동할 수 있습니다.
 
-![My ETA 실제 로컬 데모 화면](docs/assets/screens/demo-desktop.png)
+My ETA는 단순히 빠른 경로를 고르는 데서 나아가, **사용자의 이동 조건과 경로에서 확인해야 할 정보를 함께 보여주는 것**을 목표로 합니다. 현재 연동 대상은 서울의 교통·이동편의시설 데이터입니다.
 
-실제 로컬 FastAPI 데모 응답을 사용한 화면입니다. 장소 SDK만 테스트 대역으로 바꿨고 경로·소요 시간은 합성 값입니다. 실제 길 안내나 지도 정확도 검증 화면이 아닙니다.
+## 사용 흐름
+
+이동 프로필 설정 → 출발·도착지 검색 → 경로와 예상 시간 비교 → 구간별 정보 확인 → 이동 안내·필요 시 재탐색
+
+## 화면과 주요 기능
+
+![My ETA의 경로 비교와 안내 화면](docs/assets/screens/demo-desktop.png)
+
+로컬 데모 화면입니다. 경로와 시간은 합성 값이며, 이 캡처에서는 장소 SDK만 테스트 대역을 사용했습니다. 실제 경로 정확도나 시설 운행 상태를 검증한 화면은 아닙니다.
+
+| 기능 | 사용자가 할 수 있는 일 |
+|---|---|
+| 이동 프로필 | 이동 유형과 보조기구, 계단 회피, 엘리베이터·저상버스 조건을 설정합니다. |
+| 경로 비교 | 출발·도착지를 고르고 대중교통·도보·택시 경로와 예상 시간을 살펴봅니다. |
+| 개인화 시간 | 설정한 보행속도와 이동 조건이 반영된 예상 시간을 확인합니다. |
+| 접근성 정보 | 엘리베이터·저상버스 등 경로의 이동편의 정보와 확인이 필요한 항목을 봅니다. |
+| 이동 안내 | 선택한 경로의 구간별 안내를 보고, 이탈·교통수단 놓침 등에 대한 재탐색 흐름을 체험합니다. |
 
 <details>
-<summary>모바일 화면</summary>
+<summary>모바일 경로 화면</summary>
 
-<img src="docs/assets/screens/demo-mobile.png" alt="My ETA 모바일 데모 화면" width="360" />
+<img src="docs/assets/screens/demo-mobile.png" alt="My ETA 모바일 경로 비교 화면" width="320" />
 
 </details>
 
-## 사용 흐름과 처리 구조
+## 데모와 실제 정보의 구분
 
-데모 로그인 → 출발·도착지 선택 → 경로 요청 → 합성 출처·확인 필요 정보 확인
+기본 실행은 외부 키 없이 동작하는 **데모 모드**입니다. 경로와 교통 정보는 합성 자료입니다. 실제 API 모드는 TMAP·서울 공공데이터의 설정이 필요하며, 조회하지 못한 정보는 확인 필요 상태로 표시합니다.
 
-![응답에 담을 수 있는 사실의 경계](docs/assets/architecture/request-flow.svg)
+시설이 목록에 있다는 것과 지금 이용할 수 있다는 것은 다릅니다. 현재 운행을 확인하지 못한 경우 이용 가능으로 단정하지 않습니다. 실제 공급자 응답과 현장의 접근성·경로 정확도는 별도의 검증이 필요합니다. 기존 데모 로그인도 실제 사용자 인증 서비스는 아닙니다.
 
-그림 설명: 모드 선택 → 공급자 조회 → 사실 구분 → 응답·화면. 실 API 모드에서는 빠진 정보를 합성 값으로 채우지 않습니다. 실패한 조회는 정상 캐시로 남기지 않습니다.
+## 로컬에서 실행하기
 
-## 핵심 판단
-
-| 문제 | 선택 | 확인한 근거 |
-|---|---|---|
-| 실 API 모드에도 모의 보행·버스 정보가 섞일 수 있었습니다. | 공급자를 모드별로 분리하고 확인 못한 값은 `UNKNOWN`으로 처리합니다. | [공급자 구성](backend/app/main.py), [경계 회귀](backend/tests/test_rebuild_boundaries.py) |
-| 시설 목록의 존재가 현재 운행 가능으로 해석됐습니다. | `exists`, `status`, `fetchedAt`, `observedAt`의 의미를 구분합니다. | [서울 공급자](backend/app/providers/seoul.py), [화면 매핑](frontend/src/api/mappers.ts) |
-| 빈 캐시의 동시 요청이 원본을 중복 조회했습니다. | 진행 중인 작업을 공유하고 실패·취소·TTL 경계를 검증합니다. | [요청 공유 회귀](backend/tests/test_rebuild_boundaries.py), [원표본](docs/evidence/2026-10-02/source-cache.json) |
-
-## 검증 결과
-
-2026-10-02 로컬 검증: Python **83개**, 프론트 단위 **24개**, 데스크톱·모바일 **E2E 2개 통과**. HTTP 전송을 대체한 실제 클라이언트에서 빈 캐시 동시 8개 요청은 원본 조회 1번, 채워진 뒤 추가 8개 요청은 원본 추가 0번을 관측했습니다.
-
-이는 한 프로세스의 요청 수 관측입니다. 실제 서울 API의 응답시간이나 길찾기 정확도 개선을 뜻하지 않습니다. E2E는 실제 로컬 경로 API를 호출하며 외부 장소 SDK만 대체했습니다.
-
-[검증 기록](docs/VERIFICATION.md) · [테스트 결과](docs/evidence/2026-10-02/tests.xml) · [과거 고정 지연 함수 실험](docs/PERF_RESULT.md)
-
-## 로컬 실행
+먼저 Docker로 데모 API를 실행합니다.
 
 ```bash
-# API 데모: 외부 키 없이 실행
 docker compose -p eta-rebuild -f compose.demo.yml up -d --build
-curl http://localhost:18083/health
 ```
 
-API 문서는 `http://localhost:18083/docs`입니다. 기본 모드는 `DEMO`입니다.
+API 문서는 `http://localhost:18083/docs`입니다. 지도 키가 없어도 여기서 경로 응답을 확인할 수 있습니다.
 
 ```bash
 cd frontend
@@ -59,27 +59,19 @@ npm ci
 VITE_API_BASE_URL=http://localhost:18083/api/v1 npm run dev
 ```
 
-화면의 기존 데모 계정은 `test@eta.com / password123`입니다. 지도·장소 검색에는 Kakao JavaScript 키가 필요합니다. 키 없이 API 문서로 경로 응답을 확인할 수 있습니다.
+화면의 데모 계정은 `test@eta.com / password123`입니다. 지도·장소 검색에는 Kakao JavaScript 키와 허용 도메인 설정이 필요합니다. `frontend/.env.example`을 참고합니다.
 
-```bash
-uv sync --project backend --locked --all-groups
-uv run --project backend pytest backend/tests
-uv run --project backend ruff check backend/app backend/tests backend/tools/measure_source_cache.py
-npm test --prefix frontend
-npm run lint --prefix frontend
-npm run build --prefix frontend
-# 실행 중인 API를 stop한 뒤: 같은 포트를 E2E가 사용합니다.
-(cd frontend && npx playwright test)
-```
+## 사용 기술
 
-## 범위와 한계
+| 영역 | 기술 |
+|---|---|
+| 웹 | React · TypeScript · Vite · Tailwind CSS |
+| API | Python · FastAPI · Pydantic · HTTPX |
+| 지도·경로·교통 | Kakao · TMAP · 서울 공공데이터 |
+| 실행·검증 | Docker Compose · Pytest · Vitest · Playwright |
 
-실제 TMAP·서울 API 호출, 지도·장소 검색 품질, 현장 접근성·운행 상태·길찾기 정확도는 미검증입니다. 캐시 요청 공유는 한 프로세스 범위이며 여러 worker의 공유 캐시가 아닙니다. 기존 데모 인증은 실제 사용자 인증 서비스가 아닙니다.
+## 프로젝트 자료와 역할
 
-이번 개인 보강은 AI 지원으로 구현하고 로컬에서 검증했습니다. 코드로 확인한 동작·실험 관측·미검증 범위를 구분하며, 실제로 겪지 않은 운영 장애나 팀 전체 결과를 개인 성과로 표현하지 않습니다.
+[기존 팀 소개·실행 안내](docs/archive/README-team-before-rebuild.md) · [API 명세](docs/openapi.yaml) · [서비스 구조](docs/SERVICE_GUIDE.md) · [검증 기록](docs/VERIFICATION.md) · [화면 이미지 출처](docs/assets/README.md)
 
-## 코드 읽기
-
-[공급자 구성](backend/app/main.py) → [SeoulDataClient](backend/app/providers/seoul.py) → [응답 모델](backend/app/models.py) → [프론트 매핑](frontend/src/api/mappers.ts). [선택 이유·실패 조건·변경 과제](docs/SERVICE_GUIDE.md)와 함께 읽습니다.
-
-[기존 팀 README](docs/archive/README-team-before-rebuild.md) · [OpenAPI 계약](docs/openapi.yaml)
+팀 프로젝트 이후 개인 보강에서는 실제 정보와 데모의 구분, 외부 데이터가 없을 때의 응답 처리를 다뤘습니다. AI 지원 구현과 검증의 상세 내용은 개발 문서에 분리하며, 팀의 결과와 개인 보강 범위를 구분합니다.
