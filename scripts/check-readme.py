@@ -24,7 +24,7 @@ for reference in references:
         errors.append(f'Missing file: {reference}')
     checked += 1
 
-for path in (root / 'docs/assets/screens').glob('demo-*.png'):
+for path in (root / 'docs/assets/screens').glob('*.png'):
     data = path.read_bytes()
     if data[:8] != b'\x89PNG\r\n\x1a\n':
         errors.append(f'Invalid PNG: {path.name}')
