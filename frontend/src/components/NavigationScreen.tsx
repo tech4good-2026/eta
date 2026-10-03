@@ -218,7 +218,7 @@ export function NavigationScreen({
           <span className="text-sm font-bold text-emerald-400">안내 중</span>
         </div>
         <div className="flex items-center gap-3 text-sm font-mono font-bold text-slate-400">
-          
+
           <span>내 속도로 남은 시간 <b className="text-emerald-400 text-base">{route.personal}분</b></span>
         </div>
       </div>
@@ -327,7 +327,7 @@ export function NavigationScreen({
         <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 shrink-0 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
           <span className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
             <MapPin className="w-4 h-4 shrink-0 text-blue-600" />
-            지하에서는 GPS가 끊깁니다 — 지금 있는 역을 눌러 주세요
+            지하에서는 GPS가 끊깁니다. 지금 있는 역을 눌러 주세요
           </span>
           <div className="flex gap-1.5 shrink-0 py-0.5">
             {route.stationOptions.length === 0 && <span className="text-xs text-slate-400">해당 경로에 지하철역 없음</span>}

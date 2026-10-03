@@ -382,7 +382,7 @@ export default function App() {
 
   return (
     <div className="flex justify-center items-start sm:items-center min-h-[100dvh] bg-slate-900 font-sans p-0 sm:p-4 overflow-y-auto">
-      {/* Smartphone frame container layout — 창이 작아도 프레임이 화면 안에 맞고 내부가 스크롤된다 */}
+      {/* Smartphone frame container layout: 창이 작아도 프레임이 화면 안에 맞고 내부가 스크롤된다 */}
       <div className="w-full max-w-[428px] h-[100dvh] sm:h-[860px] sm:max-h-[calc(100dvh-32px)] bg-slate-50 shadow-2xl relative flex flex-col overflow-hidden sm:rounded-[40px] sm:border-[8px] sm:border-slate-850">
 
         {dataMode && (
