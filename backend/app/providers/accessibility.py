@@ -60,7 +60,7 @@ class HybridAccessibilityProvider:
     async def _guard(self, awaitable: Awaitable[T], fallback: T) -> T:
         """외부 응답 하나가 실패하거나 늦어도 나머지를 붙들지 않는다.
 
-        늦은 것과 못 받은 것을 같게 다룬다 — 어느 쪽이든 우리가 아는 건 '확인 안 됨'이다.
+        늦은 것과 못 받은 것을 같게 다룬다. 어느 쪽이든 우리가 아는 건 '확인 안 됨'이다.
         """
         try:
             if self.provider_timeout_sec is None:

@@ -118,7 +118,7 @@ async def main() -> None:
     args = parser.parse_args()
 
     delay = args.delay_ms / 1000
-    # (지하철 구간 수, 경로 후보 수) — 환승 0·1·3회, 후보 1개와 3개
+    # (지하철 구간 수, 경로 후보 수): 환승 0·1·3회, 후보 1개와 3개
     cases = [(1, 1), (2, 1), (4, 1), (4, 3)]
     rows = []
     for leg_count, candidates in cases:

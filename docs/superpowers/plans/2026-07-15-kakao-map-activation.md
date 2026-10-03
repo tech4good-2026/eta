@@ -141,7 +141,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 Expected: HTTP `200`.
 
-### Task 4: 프론트–백엔드 전체 흐름 검증
+### Task 4: 프론트-백엔드 전체 흐름 검증
 
 **Files:**
 - Modify: `frontend/src/App.tsx`

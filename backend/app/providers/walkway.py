@@ -7,9 +7,9 @@
 
 | 필드 | 출처 |
 |------|------|
-| ``surface_type``, ``width_m`` | 서울시 보도통계자료(OA-22240) — 포장재·보도 폭 |
+| ``surface_type``, ``width_m`` | 서울시 보도통계자료(OA-22240): 포장재·보도 폭 |
 | ``max_slope_percent`` | 서울시 경사도 표고·등고선(OA-22241) 계산값 |
-| ``curb_ramp_present``, ``tactile_paving_present`` | 서울시 횡단보도 데이터 — 보도턱낮춤·점자블록 |
+| ``curb_ramp_present``, ``tactile_paving_present`` | 서울시 횡단보도 데이터: 보도턱낮춤·점자블록 |
 | ``passable`` | 도로시설(인도) 레이어 + 실시간 통제 |
 
 원본 데이터셋을 확보하기 전까지는 값을 지어내지 않고 ``UnknownWalkwaySource``가

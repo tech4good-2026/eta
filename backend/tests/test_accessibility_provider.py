@@ -316,7 +316,7 @@ async def test_legs_are_asked_together_so_latency_does_not_add_up() -> None:
     assert len(context.subway) == 4
     # 구간 4개 × 구간당 독립 호출 5개 = 차례로면 20단계(1.0초 이상).
     # 같이 물으면 한 단계로 끝난다. 넉넉히 잡아도 절반을 넘지 않아야 한다.
-    assert elapsed < delay * 10, f"{elapsed:.3f}s — 아직 차례로 기다리고 있다"
+    assert elapsed < delay * 10, f"{elapsed:.3f}s: 아직 차례로 기다리고 있다"
 
 
 @pytest.mark.asyncio
@@ -350,7 +350,7 @@ class HangingSeoulClient:
 
 @pytest.mark.asyncio
 async def test_slow_provider_degrades_to_unknown_instead_of_blocking() -> None:
-    """늦은 것과 못 받은 것을 같게 다룬다 — 둘 다 '확인 안 됨'이다."""
+    """늦은 것과 못 받은 것을 같게 다룬다. 둘 다 '확인 안 됨'이다."""
     start, end = _station("탑승역", 37.5, 127.0), _station("하차역", 37.51, 127.01)
     route = _route("r", [_subway_leg("subway-leg", start, end)])
 
@@ -363,4 +363,4 @@ async def test_slow_provider_degrades_to_unknown_instead_of_blocking() -> None:
     subway = context.subway["subway-leg"]
     assert subway.elevator_status == FacilityStatus.UNKNOWN
     assert subway.confidence == DataConfidence.UNKNOWN
-    assert elapsed < 1.0, f"{elapsed:.3f}s — 응답이 외부에 붙들렸다"
+    assert elapsed < 1.0, f"{elapsed:.3f}s: 응답이 외부에 붙들렸다"
